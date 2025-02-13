@@ -1,40 +1,40 @@
 <h1>Models</h1> 
-  1. User Model
-  2. Class Model
-  3. Assignment Model
-  4. Attendance Model
+  1. User Model <br>
+  2. Class Model<br>
+  3. Assignment Model<br>
+  4. Attendance Model<br>
 
      
-<h1>Path Structure</h1>
-     virtual-classroom/
-│── public/
-│── src/
-│   ├── assets/                # Images & icons
-│   ├── components/            # Reusable UI components
-│   │   ├── Navbar.js
-│   │   ├── Footer.js
-│   │   ├── Button.js
-│   │   ├── Modal.js
-│   ├── pages/                 # Pages of the app
-│   │   ├── Dashboard.js
-│   │   ├── ClassDetails.js
-│   │   ├── Assignments.js
-│   │   ├── LiveClass.js
-│   │   ├── Attendance.js
-│   ├── services/              # API services
-│   │   ├── authService.js
-│   │   ├── classService.js
-│   │   ├── assignmentService.js
-│   ├── store/                 # Redux store
-│   │   ├── slices/
-│   │   │   ├── authSlice.js
-│   │   │   ├── classSlice.js
-│   │   │   ├── assignmentSlice.js
-│   │   ├── store.js
-│   ├── App.js
-│   ├── index.js
-│── package.json
-│── tailwind.config.js
-│── .env
-│── README.md
+<h1>Path Structure</h1><br>
+     virtual-classroom/<br>
+│── public/<br>
+│── src/<br>
+│   ├── assets/                # Images & icons<br>
+│   ├── components/            # Reusable UI components<br>
+│   │   ├── Navbar.js<br>
+│   │   ├── Footer.js<br>
+│   │   ├── Button.js<br>
+│   │   ├── Modal.js<br>
+│   ├── pages/                 # Pages of the app<br>
+│   │   ├── Dashboard.js<br>
+│   │   ├── ClassDetails.js<br>
+│   │   ├── Assignments.js<br>
+│   │   ├── LiveClass.js<br>
+│   │   ├── Attendance.js<br>
+│   ├── services/              # API services<br>
+│   │   ├── authService.js<br>
+│   │   ├── classService.js<br>
+│   │   ├── assignmentService.js<br>
+│   ├── store/                 # Redux store<br>
+│   │   ├── slices/<br>
+│   │   │   ├── authSlice.js<br>
+│   │   │   ├── classSlice.js<br>
+│   │   │   ├── assignmentSlice.js<br>
+│   │   ├── store.js<br>
+│   ├── App.js<br>
+│   ├── index.js<br>
+│── package.json<br>
+│── tailwind.config.js<br>
+│── .env<br>
+│── README.md<br>
 
