@@ -6,7 +6,11 @@
 1. User Module  <br>  
 2. Class Module  <br>  
 3. Assignment Module  <br>  
-4. Attendance Module  <br>  
+4. Attendance Module  <br>
+5. Engagement & Interaction Module<br>
+6. Gamification & Motivation Module<br>
+7. Assessment & Feedback Module<br>
+8. Parental & Progress Tracking Module.<br>
 
 <br>  
 
