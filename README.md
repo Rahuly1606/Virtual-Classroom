@@ -38,3 +38,27 @@
 │── .env<br>
 │── README.md<br>
 
+<h1>Technologies to be Used</h1><br>
+Frontend: React.js, Tailwind CSS, Redux (for state management)<br>
+Backend: Django (Python) or Node.js (Express.js)<br>
+Database: PostgreSQL / MySQL / MongoDB<br>
+Authentication: JWT (JSON Web Token) or Firebase Auth<br>
+Video Conferencing: Jitsi Meet / WebRTC / Zoom API<br>
+Storage: AWS S3 / Firebase Storage (for assignments & recordings)<br>
+Real-time Communication: Socket.io (for chat & notifications)<br>
+
+<h1>Functional Requirements</h1>
+User Authentication & Authorization<br>
+Users can sign up as a teacher or student.<br>
+Users can log in and log out securely.<br>
+Teachers and students should have role-based access to different features.<br>
+Passwords should be hashed & stored securely.<br>
+Implement JWT-based authentication for secure API access.<br>
+
+<h1>Class Management (For Teachers)</h1><br>
+Teachers can create, edit, and delete virtual classes.<br>
+Teachers can assign students to classes.<br>
+Teachers can set schedules for live sessions.<br>
+Teachers can upload study materials (PDFs, Videos, etc.).<br>
+Teachers can send announcements to students.<br>
+
