@@ -1,8 +1,8 @@
-<h1>Models</h1> 
-  1. User Model <br>
-  2. Class Model<br>
-  3. Assignment Model<br>
-  4. Attendance Model<br>
+<h1>Modules</h1> 
+  1. User Module <br>
+  2. Class Module<br>
+  3. Assignment Modulel<br>
+  4. Attendance Module<br>
 
      
 <h1>Path Structure</h1><br>
