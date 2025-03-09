@@ -14,7 +14,7 @@
 
 <br>  
 
-<h1>Path Structure of Projet</h1><br>
+<h1>Path Structure of Project</h1><br>
      virtual-classroom/<br>
 │── public/<br>
 │── src/<br>
