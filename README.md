@@ -150,3 +150,13 @@ Export reports in CSV/PDF format.  <br>
 ✅ Integration – Support external APIs like Google Drive (for file storage) & Zoom (for live classes).  <br>  
 
 <br>  
+# Customer Journey Map
+<br>
+![WhatsApp Image 2025-02-25 at 12 25 10_a6ffab7b](https://github.com/user-attachments/assets/4356a98e-37de-42a3-878a-20a11e97998d)
+<br>
+<br>
+# Empathy Map
+<br>
+![WhatsApp Image 2025-02-25 at 11 42 46_97cf3c58](https://github.com/user-attachments/assets/7ce4597f-5273-43c5-b887-a3fe67d58481)
+<br>
+
