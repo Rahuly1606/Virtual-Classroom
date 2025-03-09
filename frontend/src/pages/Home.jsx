@@ -29,6 +29,24 @@ const Home = () => {
               Track your attendance and stay updated with your class schedule.
             </p>
           </div>
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-2xl font-bold text-yellow-700 mb-4">Interaction Time</h2>
+            <p className="text-gray-700">
+              Engage in interactive sessions and group discussions with your peers.
+            </p>
+          </div>
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-2xl font-bold text-yellow-700 mb-4">Feedback</h2>
+            <p className="text-gray-700">
+              Receive constructive feedback from your instructors to improve your learning.
+            </p>
+          </div>
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-2xl font-bold text-yellow-700 mb-4">Gamification & Motivation Module</h2>
+            <p className="text-gray-700">
+              Let's play! Earn points, badges, and rewards to stay motivated and engaged in your learning journey.
+            </p>
+          </div>
         </div>
       </div>
     </div>
