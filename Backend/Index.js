@@ -1,8 +1,8 @@
 const express = require('express');
 const connectDB = require('./config/db');
-const authRoutes = require('./routes/authRoutes');
+const authRoutes = require('./auth/authRoutes');
 const dotenv = require('dotenv');
-const authMiddleware = require('./middleware/authMiddleware');
+const authMiddleware = require('./auth/authMiddleware');
 
 dotenv.config();
 connectDB();

@@ -3,7 +3,19 @@ const bcrypt = require('bcrypt');
 const { generateToken } = require('./tokenService');
 
 const signup = async (userData) => {
-  const user = new User(userData);
+  if (userData.role === 'Parent') {
+    const student = await User.findOne({ email: userData.studentEmail, role: 'Student' });
+    if (!student) {
+      throw new Error('Student email does not exist');
+    }
+  }
+  const user = new User({
+    fullname: userData.fullname,
+    email: userData.email,
+    password: userData.password,
+    role: userData.role,
+    ...(userData.role === 'Parent' && { studentEmail: userData.studentEmail }) // Conditionally include studentEmail
+  });
   await user.save();
   return user;
 };
