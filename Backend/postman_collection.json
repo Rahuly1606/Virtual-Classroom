@@ -1,0 +1,443 @@
+{
+  "info": {
+    "name": "Virtual Classroom API",
+    "description": "API for Virtual Classroom System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"name\": \"John Doe\",\n\t\"email\": \"john@example.com\",\n\t\"password\": \"password123\",\n\t\"role\": \"teacher\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"email\": \"john@example.com\",\n\t\"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "profile"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Courses",
+      "item": [
+        {
+          "name": "Create Course",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Introduction to Programming",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Learn the basics of programming",
+                  "type": "text"
+                },
+                {
+                  "key": "subject",
+                  "value": "Computer Science",
+                  "type": "text"
+                },
+                {
+                  "key": "coverImage",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/courses",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "courses"]
+            }
+          }
+        },
+        {
+          "name": "Get All Courses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/courses",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "courses"]
+            }
+          }
+        },
+        {
+          "name": "Get Course by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/courses/{{courseId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "courses", "{{courseId}}"]
+            }
+          }
+        },
+        {
+          "name": "Enroll in Course",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/courses/{{courseId}}/enroll",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "courses", "{{courseId}}", "enroll"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sessions",
+      "item": [
+        {
+          "name": "Create Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"title\": \"Introduction Class\",\n\t\"course\": \"{{courseId}}\",\n\t\"description\": \"First class of the course\",\n\t\"startTime\": \"2023-07-01T10:00:00.000Z\",\n\t\"endTime\": \"2023-07-01T11:30:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sessions"]
+            }
+          }
+        },
+        {
+          "name": "Get Sessions for Course",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/course/{{courseId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sessions", "course", "{{courseId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Upcoming Sessions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/sessions/upcoming",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "sessions", "upcoming"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Attendance",
+      "item": [
+        {
+          "name": "Mark Attendance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"session\": \"{{sessionId}}\",\n\t\"student\": \"{{studentId}}\",\n\t\"status\": \"present\",\n\t\"notes\": \"On time\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/attendance",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attendance"]
+            }
+          }
+        },
+        {
+          "name": "Get Session Attendance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/attendance/session/{{sessionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "attendance", "session", "{{sessionId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Assignments",
+      "item": [
+        {
+          "name": "Create Assignment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Assignment 1",
+                  "type": "text"
+                },
+                {
+                  "key": "course",
+                  "value": "{{courseId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "First assignment of the course",
+                  "type": "text"
+                },
+                {
+                  "key": "dueDate",
+                  "value": "2023-07-15T23:59:59.000Z",
+                  "type": "text"
+                },
+                {
+                  "key": "totalPoints",
+                  "value": "100",
+                  "type": "text"
+                },
+                {
+                  "key": "attachments",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/assignments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "assignments"]
+            }
+          }
+        },
+        {
+          "name": "Get Course Assignments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/assignments/course/{{courseId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "assignments", "course", "{{courseId}}"]
+            }
+          }
+        },
+        {
+          "name": "Submit Assignment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "comment",
+                  "value": "My submission for Assignment 1",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/assignments/{{assignmentId}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "assignments", "{{assignmentId}}", "submit"]
+            }
+          }
+        },
+        {
+          "name": "Grade Submission",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n\t\"grade\": 85,\n\t\"feedback\": \"Good work, but needs improvement in some areas.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/submissions/{{submissionId}}/grade",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "submissions", "{{submissionId}}", "grade"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "token",
+      "value": "YOUR_JWT_TOKEN"
+    },
+    {
+      "key": "courseId",
+      "value": "COURSE_ID"
+    },
+    {
+      "key": "sessionId",
+      "value": "SESSION_ID"
+    },
+    {
+      "key": "studentId",
+      "value": "STUDENT_ID"
+    },
+    {
+      "key": "assignmentId",
+      "value": "ASSIGNMENT_ID"
+    },
+    {
+      "key": "submissionId",
+      "value": "SUBMISSION_ID"
+    }
+  ]
+} 
