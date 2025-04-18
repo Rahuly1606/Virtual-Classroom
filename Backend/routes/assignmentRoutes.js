@@ -8,6 +8,8 @@ import {
   submitAssignment,
   getAssignmentSubmissions,
   gradeSubmission,
+  getStudentAssignments,
+  getTeacherAssignments,
 } from '../controllers/assignmentController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { assignmentValidationRules, submissionValidationRules, validateRequest } from '../middleware/validator.js';
@@ -15,6 +17,38 @@ import upload from '../utils/fileUpload.js';
 import { setUploadPath, setAllowedFileTypes } from '../utils/fileUpload.js';
 
 const router = express.Router();
+
+/**
+ * @swagger
+ * /api/assignments/student:
+ *   get:
+ *     summary: Get all assignments for the current student
+ *     tags: [Assignments]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of assignments for the student across all courses
+ *       403:
+ *         description: Not authorized (only students can access)
+ */
+router.get('/student', protect, authorize('student'), getStudentAssignments);
+
+/**
+ * @swagger
+ * /api/assignments/teacher:
+ *   get:
+ *     summary: Get all assignments created by the current teacher
+ *     tags: [Assignments]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of assignments created by the teacher
+ *       403:
+ *         description: Not authorized (only teachers can access)
+ */
+router.get('/teacher', protect, authorize('teacher'), getTeacherAssignments);
 
 /**
  * @swagger

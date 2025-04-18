@@ -68,6 +68,41 @@ export const loginUser = async (req, res, next) => {
     // Generate token
     const token = generateToken(user._id);
 
+    // Return user data without password
+    const userData = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      profilePicture: user.profilePicture,
+    };
+
+    res.status(200).json({
+      success: true,
+      data: {
+        user: userData,
+        token,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get current logged-in user
+ * @route   GET /api/users/me
+ * @access  Private
+ */
+export const getCurrentUser = async (req, res, next) => {
+  try {
+    // req.user is set by the protect middleware
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      throw new ApiError('User not found', 404);
+    }
+
     res.status(200).json({
       success: true,
       data: {
@@ -76,7 +111,7 @@ export const loginUser = async (req, res, next) => {
         email: user.email,
         role: user.role,
         profilePicture: user.profilePicture,
-        token,
+        bio: user.bio,
       },
     });
   } catch (error) {

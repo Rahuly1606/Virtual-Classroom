@@ -5,6 +5,112 @@ import Course from '../models/Course.js';
 import { ApiError } from '../middleware/errorHandler.js';
 
 /**
+ * @desc    Get attendance records for the current student across all courses
+ * @route   GET /api/attendance/student
+ * @access  Private/Student
+ */
+export const getCurrentStudentAttendance = async (req, res, next) => {
+  try {
+    // Ensure the user is a student
+    if (req.user.role !== 'student') {
+      throw new ApiError('Route only accessible to students', 403);
+    }
+
+    // Find all active enrollments for this student
+    const enrollments = await Enrollment.find({
+      student: req.user._id,
+      status: 'active'
+    }).populate('course', 'title code');
+
+    if (enrollments.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'No active course enrollments found',
+        data: []
+      });
+    }
+
+    // Get all courses the student is enrolled in
+    const courseIds = enrollments.map(enrollment => enrollment.course._id);
+
+    // Get all sessions for these courses
+    const sessions = await Session.find({
+      course: { $in: courseIds },
+      // Only get sessions that have already occurred
+      startTime: { $lt: new Date() }
+    }).populate('course', 'title code');
+
+    // Get attendance records for the student across all these sessions
+    const attendanceRecords = await Attendance.find({
+      student: req.user._id,
+      session: { $in: sessions.map(session => session._id) }
+    }).populate({
+      path: 'session',
+      select: 'title startTime endTime',
+      populate: {
+        path: 'course',
+        select: 'title code'
+      }
+    });
+
+    // Calculate attendance statistics per course
+    const courseStats = {};
+    
+    // Initialize stats for each course
+    courseIds.forEach(courseId => {
+      courseStats[courseId.toString()] = {
+        courseId: courseId,
+        courseName: enrollments.find(e => e.course._id.toString() === courseId.toString()).course.title,
+        courseCode: enrollments.find(e => e.course._id.toString() === courseId.toString()).course.code,
+        totalSessions: 0,
+        present: 0,
+        absent: 0,
+        late: 0,
+        excused: 0,
+        attendancePercentage: 0
+      };
+    });
+
+    // Count sessions per course
+    sessions.forEach(session => {
+      const courseId = session.course._id.toString();
+      if (courseStats[courseId]) {
+        courseStats[courseId].totalSessions++;
+      }
+    });
+
+    // Count attendance statuses
+    attendanceRecords.forEach(record => {
+      const courseId = record.session.course._id.toString();
+      if (courseStats[courseId]) {
+        courseStats[courseId][record.status]++;
+      }
+    });
+
+    // Calculate attendance percentages
+    Object.keys(courseStats).forEach(courseId => {
+      const stats = courseStats[courseId];
+      stats.attendancePercentage = stats.totalSessions > 0 
+        ? ((stats.present + stats.late) / stats.totalSessions) * 100 
+        : 0;
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        courseStats: Object.values(courseStats),
+        recentAttendance: attendanceRecords
+          .sort((a, b) => new Date(b.session.startTime) - new Date(a.session.startTime))
+          .slice(0, 5) // Get 5 most recent records
+      }
+    });
+  } catch (error) {
+    console.error('Error in getCurrentStudentAttendance:', error);
+    next(error);
+  }
+};
+
+/**
  * @desc    Mark attendance for a student
  * @route   POST /api/attendance
  * @access  Private/Teacher

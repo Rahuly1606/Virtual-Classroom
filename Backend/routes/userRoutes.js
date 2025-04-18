@@ -6,6 +6,7 @@ import {
   updateUserProfile,
   getUsers,
   getUserById,
+  getCurrentUser,
 } from '../controllers/userController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { userValidationRules, validateRequest } from '../middleware/validator.js';
@@ -79,6 +80,22 @@ router.post('/register', userValidationRules.register, validateRequest, register
  *         description: Invalid credentials
  */
 router.post('/login', userValidationRules.login, validateRequest, loginUser);
+
+/**
+ * @swagger
+ * /api/users/me:
+ *   get:
+ *     summary: Get current logged-in user data
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user data retrieved successfully
+ *       401:
+ *         description: Not authorized
+ */
+router.get('/me', protect, getCurrentUser);
 
 /**
  * @swagger

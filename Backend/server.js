@@ -5,6 +5,8 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Import routes
 import userRoutes from './routes/userRoutes.js';
@@ -15,6 +17,10 @@ import assignmentRoutes from './routes/assignmentRoutes.js';
 
 // Load environment variables
 dotenv.config();
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Swagger documentation setup
 const swaggerOptions = {
@@ -42,10 +48,16 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP for development purposes only
+  crossOriginResourcePolicy: { policy: 'cross-origin' } // Allow cross-origin resource sharing
+}));
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static files from the uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // API routes
 app.use('/api/users', userRoutes);

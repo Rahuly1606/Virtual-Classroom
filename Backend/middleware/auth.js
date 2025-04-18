@@ -5,42 +5,65 @@ import User from '../models/User.js';
 export const protect = async (req, res, next) => {
   let token;
 
-  // Check if token exists in headers
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith('Bearer')
-  ) {
-    try {
-      // Get token from header
+  try {
+    // Check if authorization header exists and has the correct format
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith('Bearer')
+    ) {
+      // Extract token from header
       token = req.headers.authorization.split(' ')[1];
-
-      // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-      // Get user from token
-      req.user = await User.findById(decoded.id).select('-password');
-
-      if (!req.user) {
+      
+      console.log('Auth middleware received token:', token ? token.substring(0, 15) + '...' : 'null');
+      
+      // Check if token exists
+      if (!token) {
         return res.status(401).json({
           success: false,
-          message: 'User not found with this token',
+          message: 'Not authorized, token missing in authorization header',
         });
       }
-
-      next();
-    } catch (error) {
-      console.error(error);
+      
+      try {
+        // Verify token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log('Token successfully verified:', decoded.id);
+        
+        // Get user from database
+        const user = await User.findById(decoded.id).select('-password');
+        
+        if (!user) {
+          console.log('User not found with token ID:', decoded.id);
+          return res.status(401).json({
+            success: false,
+            message: 'User not found with this token',
+          });
+        }
+        
+        // Set user in request object
+        req.user = user;
+        next();
+      } catch (verifyError) {
+        console.error('Token verification failed:', verifyError.message);
+        return res.status(401).json({
+          success: false,
+          message: 'Not authorized, token invalid',
+          error: verifyError.message,
+        });
+      }
+    } else {
+      console.log('No authorization header or invalid format');
       return res.status(401).json({
         success: false,
-        message: 'Not authorized, token failed',
+        message: 'Not authorized, no token provided in header',
       });
     }
-  }
-
-  if (!token) {
-    return res.status(401).json({
+  } catch (error) {
+    console.error('Error in auth middleware:', error);
+    return res.status(500).json({
       success: false,
-      message: 'Not authorized, no token',
+      message: 'Server error in authentication',
+      error: error.message,
     });
   }
 };
@@ -67,7 +90,17 @@ export const authorize = (...roles) => {
 
 // Generate JWT Token
 export const generateToken = (id) => {
+  // Make sure JWT_SECRET and JWT_EXPIRES_IN are defined
+  if (!process.env.JWT_SECRET) {
+    console.error('JWT_SECRET is not defined in environment variables');
+    throw new Error('JWT_SECRET must be defined');
+  }
+
+  const expiresIn = process.env.JWT_EXPIRES_IN || '7d'; // Default to 7 days if not specified
+  
+  console.log(`Generating token for user ${id} with expiration: ${expiresIn}`);
+  
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN,
+    expiresIn: expiresIn,
   });
 }; 

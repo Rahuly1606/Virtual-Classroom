@@ -7,6 +7,9 @@ import {
   deleteSession,
   getUpcomingSessions,
   completeSession,
+  getAllSessions,
+  getPastSessions,
+  joinSession
 } from '../controllers/sessionController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { sessionValidationRules, validateRequest } from '../middleware/validator.js';
@@ -61,6 +64,34 @@ router.post(
   validateRequest,
   createSession
 );
+
+/**
+ * @swagger
+ * /api/sessions:
+ *   get:
+ *     summary: Get all sessions for the logged-in user
+ *     tags: [Sessions]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all user's sessions
+ */
+router.get('/', protect, getAllSessions);
+
+/**
+ * @swagger
+ * /api/sessions/past:
+ *   get:
+ *     summary: Get past sessions for the logged-in user
+ *     tags: [Sessions]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of past sessions
+ */
+router.get('/past', protect, getPastSessions);
 
 /**
  * @swagger
@@ -228,5 +259,29 @@ router.delete('/:id', protect, authorize('teacher'), deleteSession);
  *         description: Not authorized to update this session
  */
 router.put('/:id/complete', protect, authorize('teacher'), completeSession);
+
+/**
+ * @swagger
+ * /api/sessions/{id}/join:
+ *   post:
+ *     summary: Join a session
+ *     tags: [Sessions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Session join URL
+ *       404:
+ *         description: Session not found
+ *       403:
+ *         description: Not authorized to join this session
+ */
+router.post('/:id/join', protect, joinSession);
 
 export default router; 

@@ -32,9 +32,12 @@ import mongoose from 'mongoose';
  *         videoLink:
  *           type: string
  *           description: URL for the video conferencing room
+ *         hostVideoLink:
+ *           type: string
+ *           description: URL for the host (teacher) to access the video room with host privileges
  *         meetingId:
  *           type: string
- *           description: ID of the video meeting (Jitsi/Zoom)
+ *           description: ID of the video meeting (Whereby/Jitsi/Zoom)
  *         recordingUrl:
  *           type: string
  *           description: URL to the recorded session (if available)
@@ -87,6 +90,10 @@ const SessionSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    hostVideoLink: {
+      type: String,
+      default: '',
+    },
     meetingId: {
       type: String,
       default: '',
@@ -101,6 +108,11 @@ const SessionSchema = new mongoose.Schema(
     isCompleted: {
       type: Boolean,
       default: false,
+    },
+    videoProvider: {
+      type: String,
+      enum: ['whereby', 'jitsi', 'other'],
+      default: 'whereby',
     },
   },
   { timestamps: true }

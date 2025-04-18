@@ -1,7 +1,8 @@
 import Session from '../models/Session.js';
 import Course from '../models/Course.js';
+import Enrollment from '../models/Enrollment.js';
 import { ApiError } from '../middleware/errorHandler.js';
-import { createVideoSession } from '../utils/jitsiIntegration.js';
+import { createVideoSession } from '../utils/wherebyIntegration.js';
 
 /**
  * @desc    Create a new session
@@ -10,7 +11,7 @@ import { createVideoSession } from '../utils/jitsiIntegration.js';
  */
 export const createSession = async (req, res, next) => {
   try {
-    const { title, course, description, startTime, endTime } = req.body;
+    const { title, course, description, startTime, endTime, videoProvider = 'whereby' } = req.body;
 
     // Check if course exists and user is the teacher
     const courseDoc = await Course.findById(course);
@@ -23,8 +24,17 @@ export const createSession = async (req, res, next) => {
       throw new ApiError('Not authorized to create sessions for this course', 403);
     }
 
-    // Generate video conferencing link
-    const videoSessionData = createVideoSession(req.user, courseDoc, title);
+    // Generate video conferencing data
+    let videoSessionData;
+    
+    // Use Whereby by default
+    if (videoProvider === 'whereby') {
+      videoSessionData = await createVideoSession(courseDoc, { title, startTime, endTime });
+    } else {
+      // Fallback to Jitsi if specified or for backward compatibility
+      const jitsiIntegration = await import('../utils/jitsiIntegration.js');
+      videoSessionData = jitsiIntegration.createVideoSession(req.user, courseDoc, title);
+    }
 
     // Create the session
     const session = await Session.create({
@@ -33,8 +43,10 @@ export const createSession = async (req, res, next) => {
       description,
       startTime,
       endTime,
-      videoLink: videoSessionData.videoLink,
+      videoLink: videoSessionData.roomUrl || videoSessionData.videoLink,
+      hostVideoLink: videoSessionData.hostRoomUrl || videoSessionData.videoLink,
       meetingId: videoSessionData.meetingId,
+      videoProvider,
     });
 
     res.status(201).json({
@@ -181,10 +193,15 @@ export const getSessionById = async (req, res, next) => {
       throw new ApiError('Not authorized to access this session', 403);
     }
 
+    // Return the appropriate video link based on user role
+    // Teachers get the host link, students get the regular link
+    const videoLink = isTeacher && session.hostVideoLink ? session.hostVideoLink : session.videoLink;
+
     res.status(200).json({
       success: true,
       data: {
         ...session.toObject(),
+        videoLink,
         isTeacher,
       },
     });
@@ -247,15 +264,24 @@ export const deleteSession = async (req, res, next) => {
       throw new ApiError('Not authorized to delete this session', 403);
     }
 
-    // Delete the session
-    await session.deleteOne();
+    // If it's a Whereby session, try to delete the room as well
+    if (session.videoProvider === 'whereby' && session.meetingId) {
+      try {
+        const wherebyIntegration = await import('../utils/wherebyIntegration.js');
+        await wherebyIntegration.deleteWherebyRoom(session.meetingId);
+      } catch (error) {
+        console.error('Error deleting Whereby room:', error);
+        // Continue with session deletion even if room deletion fails
+      }
+    }
 
-    // Also delete related attendance records
-    await Attendance.deleteMany({ session: req.params.id });
+    // Delete the session
+    await Session.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
       success: true,
       data: {},
+      message: 'Session deleted successfully',
     });
   } catch (error) {
     next(error);
@@ -300,6 +326,183 @@ export const completeSession = async (req, res, next) => {
   }
 };
 
+/**
+ * @desc    Get all sessions for the logged-in user
+ * @route   GET /api/sessions
+ * @access  Private
+ */
+export const getAllSessions = async (req, res, next) => {
+  try {
+    let query = {};
+
+    if (req.user.role === 'teacher') {
+      // For teachers, get courses they teach
+      const courses = await Course.find({ teacher: req.user._id }).select('_id');
+      const courseIds = courses.map(course => course._id);
+
+      // Get sessions for these courses
+      query = {
+        course: { $in: courseIds },
+      };
+    } else {
+      // For students, get courses they are enrolled in
+      const enrollments = await Enrollment.find({
+        student: req.user._id,
+        status: 'active',
+      });
+      const courseIds = enrollments.map(enrollment => enrollment.course);
+
+      // Get sessions for these courses
+      query = {
+        course: { $in: courseIds },
+      };
+    }
+
+    // Get sessions and populate course info
+    const sessions = await Session.find(query)
+      .populate('course', 'title')
+      .sort({ startTime: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: sessions.length,
+      data: sessions,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get past sessions for the logged-in user
+ * @route   GET /api/sessions/past
+ * @access  Private
+ */
+export const getPastSessions = async (req, res, next) => {
+  try {
+    const now = new Date();
+    let query = {};
+
+    if (req.user.role === 'teacher') {
+      // For teachers, get courses they teach
+      const courses = await Course.find({ teacher: req.user._id }).select('_id');
+      const courseIds = courses.map(course => course._id);
+
+      // Get past sessions for these courses
+      query = {
+        course: { $in: courseIds },
+        endTime: { $lt: now },
+      };
+    } else {
+      // For students, get courses they are enrolled in
+      const enrollments = await Enrollment.find({
+        student: req.user._id,
+        status: 'active',
+      });
+      const courseIds = enrollments.map(enrollment => enrollment.course);
+
+      // Get past sessions for these courses
+      query = {
+        course: { $in: courseIds },
+        endTime: { $lt: now },
+      };
+    }
+
+    // Get sessions and populate course info
+    const sessions = await Session.find(query)
+      .populate('course', 'title')
+      .sort({ startTime: -1 })
+      .limit(20);
+
+    res.status(200).json({
+      success: true,
+      count: sessions.length,
+      data: sessions,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Join a session (get access URL)
+ * @route   POST /api/sessions/:id/join
+ * @access  Private
+ */
+export const joinSession = async (req, res, next) => {
+  try {
+    const session = await Session.findById(req.params.id)
+      .populate('course', 'title teacher');
+
+    if (!session) {
+      throw new ApiError('Session not found', 404);
+    }
+
+    // Check if user has access to this session
+    const course = await Course.findById(session.course._id);
+
+    // Teachers can access if they own the course
+    const isTeacher = req.user.role === 'teacher' && 
+      course.teacher.toString() === req.user._id.toString();
+
+    // Students can access if they are enrolled
+    let isStudent = false;
+    if (req.user.role === 'student') {
+      const isEnrolled = await Enrollment.exists({
+        course: session.course._id,
+        student: req.user._id,
+        status: 'active',
+      });
+      isStudent = !!isEnrolled;
+    }
+
+    if (!isTeacher && !isStudent) {
+      throw new ApiError('Not authorized to join this session', 403);
+    }
+
+    // Return the appropriate video link based on user role
+    // Teachers get the host link, students get the regular link
+    const videoLink = isTeacher && session.hostVideoLink ? session.hostVideoLink : session.videoLink;
+
+    // Create attendance record for the student
+    if (isStudent) {
+      try {
+        const Attendance = (await import('../models/Attendance.js')).default;
+        await Attendance.findOneAndUpdate(
+          { 
+            session: session._id,
+            student: req.user._id 
+          },
+          { 
+            $setOnInsert: { 
+              session: session._id,
+              student: req.user._id,
+              joinTime: new Date()
+            }
+          },
+          { 
+            upsert: true, 
+            new: true 
+          }
+        );
+      } catch (error) {
+        console.error('Error recording attendance:', error);
+        // Continue anyway to let the student join
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        videoLink,
+        isTeacher,
+        sessionId: session._id
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Import these models for the specific methods that use them
-import Enrollment from '../models/Enrollment.js';
 import Attendance from '../models/Attendance.js'; 

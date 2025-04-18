@@ -6,11 +6,28 @@ import {
   getStudentCourseAttendance,
   getCourseAttendanceStats,
   updateAttendance,
+  getCurrentStudentAttendance,
 } from '../controllers/attendanceController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { attendanceValidationRules, validateRequest } from '../middleware/validator.js';
 
 const router = express.Router();
+
+/**
+ * @swagger
+ * /api/attendance/student:
+ *   get:
+ *     summary: Get attendance records for the current student
+ *     tags: [Attendance]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Student's attendance records across all courses
+ *       403:
+ *         description: Not authorized (only students can access)
+ */
+router.get('/student', protect, authorize('student'), getCurrentStudentAttendance);
 
 /**
  * @swagger

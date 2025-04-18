@@ -116,6 +116,22 @@ router.get('/my-courses', protect, authorize('teacher'), getTeacherCourses);
 
 /**
  * @swagger
+ * /api/courses/teaching:
+ *   get:
+ *     summary: Get courses taught by the logged-in teacher (alternate endpoint)
+ *     tags: [Courses]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of teacher's courses
+ *       403:
+ *         description: Not authorized (not a teacher)
+ */
+router.get('/teaching', protect, authorize('teacher'), getTeacherCourses);
+
+/**
+ * @swagger
  * /api/courses/enrolled:
  *   get:
  *     summary: Get courses in which the logged-in student is enrolled

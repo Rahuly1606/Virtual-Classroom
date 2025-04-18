@@ -52,6 +52,83 @@ export const createAssignment = async (req, res, next) => {
 };
 
 /**
+ * @desc    Get all assignments for the current student
+ * @route   GET /api/assignments/student
+ * @access  Private/Student
+ */
+export const getStudentAssignments = async (req, res, next) => {
+  try {
+    // Ensure the user is a student
+    if (req.user.role !== 'student') {
+      throw new ApiError('Route only accessible to students', 403);
+    }
+
+    // Find all active enrollments for this student
+    const enrollments = await Enrollment.find({
+      student: req.user._id,
+      status: 'active'
+    }).select('course');
+
+    // Extract course IDs
+    const courseIds = enrollments.map(enrollment => enrollment.course);
+
+    if (courseIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        count: 0,
+        data: []
+      });
+    }
+
+    // Find all assignments for these courses
+    const assignments = await Assignment.find({
+      course: { $in: courseIds }
+    }).populate('course', 'title code');
+
+    // Check submission status for each assignment
+    const assignmentsWithStatus = await Promise.all(assignments.map(async (assignment) => {
+      const submission = await Submission.findOne({
+        assignment: assignment._id,
+        student: req.user._id
+      });
+
+      return {
+        ...assignment.toObject(),
+        submitted: !!submission,
+        submission: submission ? {
+          _id: submission._id,
+          status: submission.status,
+          grade: submission.grade,
+          submissionDate: submission.submissionDate
+        } : null
+      };
+    }));
+
+    // Sort by due date (closest first)
+    const sortedAssignments = assignmentsWithStatus.sort((a, b) => {
+      // If not submitted, sort by due date
+      if (!a.submitted && !b.submitted) {
+        return new Date(a.dueDate) - new Date(b.dueDate);
+      }
+      // Submitted assignments go after non-submitted
+      if (!a.submitted) return -1;
+      if (!b.submitted) return 1;
+      // If both submitted, sort by submission date (newest first)
+      return new Date(b.submission.submissionDate) - new Date(a.submission.submissionDate);
+    });
+
+    res.status(200).json({
+      success: true,
+      count: sortedAssignments.length,
+      data: sortedAssignments
+    });
+  } catch (error) {
+    console.error('Error in getStudentAssignments:', error);
+    next(error);
+  }
+};
+
+/**
  * @desc    Get all assignments for a course
  * @route   GET /api/assignments/course/:courseId
  * @access  Private
@@ -417,6 +494,74 @@ export const gradeSubmission = async (req, res, next) => {
       data: submission,
     });
   } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get all assignments created by the logged-in teacher
+ * @route   GET /api/assignments/teacher
+ * @access  Private/Teacher
+ */
+export const getTeacherAssignments = async (req, res, next) => {
+  try {
+    // Ensure the user is a teacher
+    if (req.user.role !== 'teacher') {
+      throw new ApiError('Route only accessible to teachers', 403);
+    }
+
+    // Find all courses taught by this teacher
+    const courses = await Course.find({ teacher: req.user._id }).select('_id title');
+    
+    if (courses.length === 0) {
+      return res.status(200).json({
+        success: true,
+        count: 0,
+        data: []
+      });
+    }
+
+    // Extract course IDs
+    const courseIds = courses.map(course => course._id);
+
+    // Find all assignments for these courses
+    const assignments = await Assignment.find({
+      course: { $in: courseIds }
+    }).populate('course', 'title code');
+
+    // Get submission counts for each assignment
+    const assignmentsWithStats = await Promise.all(assignments.map(async (assignment) => {
+      const totalSubmissions = await Submission.countDocuments({
+        assignment: assignment._id
+      });
+      
+      const gradedSubmissions = await Submission.countDocuments({
+        assignment: assignment._id,
+        status: 'graded'
+      });
+
+      return {
+        ...assignment.toObject(),
+        stats: {
+          totalSubmissions,
+          gradedSubmissions,
+          pendingGrading: totalSubmissions - gradedSubmissions
+        }
+      };
+    }));
+
+    // Sort assignments by due date
+    const sortedAssignments = assignmentsWithStats.sort((a, b) => {
+      return new Date(a.dueDate) - new Date(b.dueDate);
+    });
+
+    res.status(200).json({
+      success: true,
+      count: sortedAssignments.length,
+      data: sortedAssignments
+    });
+  } catch (error) {
+    console.error('Error in getTeacherAssignments:', error);
     next(error);
   }
 }; 
