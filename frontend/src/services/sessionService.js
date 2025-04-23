@@ -111,6 +111,20 @@ const joinSession = async (sessionId) => {
   }
 }
 
+// Mark a session as completed (teacher only)
+const completeSession = async (sessionId) => {
+  try {
+    if (!sessionId) {
+      throw new Error('Session ID is required')
+    }
+    const response = await axiosInstance.put(`/sessions/${sessionId}/complete`)
+    return response.data.data
+  } catch (error) {
+    console.error(`Error completing session ${sessionId}:`, error)
+    throw error
+  }
+}
+
 const sessionService = {
   getSessions,
   getSessionsByCourse,
@@ -120,7 +134,8 @@ const sessionService = {
   createSession,
   updateSession,
   deleteSession,
-  joinSession
+  joinSession,
+  completeSession
 }
 
 export default sessionService 

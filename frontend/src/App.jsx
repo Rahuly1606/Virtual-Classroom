@@ -87,6 +87,7 @@ const AppRoutes = () => {
           <Route path="sessions/create" element={<SessionForm />} />
           <Route path="sessions/edit/:id" element={<SessionForm />} />
           <Route path="sessions/:id" element={<Session />} />
+          <Route path="sessions/:id/detail" element={<SessionDetail />} />
           <Route path="profile" element={<Profile />} />
           <Route path="*" element={<NotFound />} />
         </Route>

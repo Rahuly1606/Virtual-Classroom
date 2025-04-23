@@ -51,7 +51,22 @@ export const userValidationRules = {
       .isLength({ min: 2, max: 50 }).withMessage('Name must be between 2 and 50 characters'),
     body('bio')
       .optional()
+      .trim(),
+    body('section')
+      .optional()
+      .trim(),
+    body('year')
+      .optional()
       .trim()
+  ],
+  changePassword: [
+    body('oldPassword')
+      .trim()
+      .notEmpty().withMessage('Old password is required'),
+    body('newPassword')
+      .trim()
+      .notEmpty().withMessage('New password is required')
+      .isLength({ min: 6 }).withMessage('New password must be at least 6 characters long')
   ]
 };
 

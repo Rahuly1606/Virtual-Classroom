@@ -9,7 +9,7 @@ import crypto from 'crypto';
 
 // Configuration for Jitsi Meet
 const JITSI_CONFIG = {
-  domain: 'meet.jit.si',
+  domain: process.env.JITSI_DOMAIN || 'meet.jit.si',
   appId: process.env.JITSI_APP_ID || '',
   apiKey: process.env.JITSI_API_KEY || '',
 };
@@ -94,7 +94,7 @@ export const generateJitsiToken = (user, roomName, options = {}) => {
  * @return {Object} - Contains roomName, videoLink, and jwtToken (if available)
  */
 export const createVideoSession = (user, course, sessionTitle) => {
-  const prefix = course.title.substring(0, 10).replace(/\s+/g, '');
+  const prefix = course.title?.substring(0, 10).replace(/\s+/g, '') || 'class';
   const roomName = generateRoomName(prefix);
   const videoLink = generateVideoLink(roomName);
   const jwtToken = JITSI_CONFIG.apiKey ? generateJitsiToken(user, roomName) : null;

@@ -7,14 +7,14 @@ const Header = ({ toggleSidebar, toggleDarkMode, isDarkMode }) => {
   const { logout } = useAuth()
 
   return (
-    <header className="bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+    <header className="bg-white border-b border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700">
       <div className="mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Left side - Mobile menu button */}
           <div className="flex items-center">
             <button
               type="button"
-              className="inline-flex items-center justify-center rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-600 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-300 lg:hidden"
+              className="inline-flex items-center justify-center rounded-md p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white lg:hidden"
               onClick={toggleSidebar}
             >
               <BiMenu className="h-6 w-6" />
@@ -27,7 +27,7 @@ const Header = ({ toggleSidebar, toggleDarkMode, isDarkMode }) => {
             {/* Dark mode toggle */}
             <button
               type="button"
-              className="flex items-center justify-center rounded-full p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-600 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+              className="flex items-center justify-center rounded-full p-2 text-gray-600 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
               onClick={toggleDarkMode}
             >
               {isDarkMode ? (
@@ -44,6 +44,7 @@ const Header = ({ toggleSidebar, toggleDarkMode, isDarkMode }) => {
               size="sm"
               onClick={logout}
               icon={<BiLogOut className="h-5 w-5" />}
+              className="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
             >
               <span className="hidden sm:inline">Logout</span>
             </Button>

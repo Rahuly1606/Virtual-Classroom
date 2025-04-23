@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import Card from '../../components/ui/Card'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
@@ -13,8 +13,13 @@ import useAuth from '../../hooks/useAuth'
 const SessionForm = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
   const isEditMode = !!id
+  
+  // Extract courseId from query parameters if available
+  const queryParams = new URLSearchParams(location.search)
+  const courseIdFromQuery = queryParams.get('courseId')
   
   const [loading, setLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(isEditMode)
@@ -26,7 +31,7 @@ const SessionForm = () => {
     description: '',
     startTime: '',
     endTime: '',
-    courseId: ''
+    courseId: courseIdFromQuery || ''
   })
   
   // Convert Date to datetime-local input format
@@ -156,6 +161,27 @@ const SessionForm = () => {
     if (endTime <= startTime) {
       toast.error('End time must be after start time')
       return false
+    }
+    
+    // Validate that the session is within the course's date range
+    const selectedCourse = courses.find(course => course._id === formData.courseId)
+    if (selectedCourse && selectedCourse.startDate && selectedCourse.endDate) {
+      const courseStartDate = new Date(selectedCourse.startDate)
+      const courseEndDate = new Date(selectedCourse.endDate)
+      
+      // Reset time part for date-only comparison if needed
+      courseStartDate.setHours(0, 0, 0, 0)
+      courseEndDate.setHours(23, 59, 59, 999)
+      
+      if (startTime < courseStartDate) {
+        toast.error('Session cannot start before the course start date')
+        return false
+      }
+      
+      if (endTime > courseEndDate) {
+        toast.error('Session cannot end after the course end date')
+        return false
+      }
     }
     
     return true
@@ -298,36 +324,40 @@ const SessionForm = () => {
               )}
             </div>
             
-            {/* Start time */}
-            <div>
-              <label htmlFor="startTime" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Start Time *
-              </label>
-              <input
-                id="startTime"
-                name="startTime"
-                type="datetime-local"
-                value={formData.startTime}
-                onChange={handleChange}
-                className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                required
-              />
-            </div>
-            
-            {/* End time */}
-            <div>
-              <label htmlFor="endTime" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                End Time *
-              </label>
-              <input
-                id="endTime"
-                name="endTime"
-                type="datetime-local"
-                value={formData.endTime}
-                onChange={handleChange}
-                className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                required
-              />
+            {/* Date & time selection */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label htmlFor="startTime" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Start Time *
+                </label>
+                <Input
+                  id="startTime"
+                  name="startTime"
+                  type="datetime-local"
+                  value={formData.startTime}
+                  onChange={handleChange}
+                  required
+                  className="mt-1"
+                  aria-label="Session Start Time"
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="endTime" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  End Time *
+                </label>
+                <Input
+                  id="endTime"
+                  name="endTime"
+                  type="datetime-local"
+                  value={formData.endTime}
+                  onChange={handleChange}
+                  required
+                  className="mt-1"
+                  min={formData.startTime} // Cannot end before it starts
+                  aria-label="Session End Time"
+                />
+              </div>
             </div>
             
             {/* Description */}
@@ -338,30 +368,31 @@ const SessionForm = () => {
               <textarea
                 id="description"
                 name="description"
+                rows="4"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                 value={formData.description}
                 onChange={handleChange}
-                rows={4}
-                className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                placeholder="Enter session description"
-              />
+                placeholder="Add additional details about this session..."
+              ></textarea>
             </div>
             
-            {/* Form actions */}
-            <div className="flex justify-end gap-3">
+            {/* Submit button */}
+            <div className="flex justify-end space-x-3">
               <Button
                 type="button"
-                variant="outline"
-                onClick={() => navigate('/sessions')}
+                variant="ghost"
                 icon={<BiX className="h-5 w-5" />}
+                onClick={() => navigate('/sessions')}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 variant="primary"
-                loading={loading}
                 icon={<BiSave className="h-5 w-5" />}
+                disabled={loading}
               >
+                {loading ? <Spinner size="sm" className="mr-2" /> : null}
                 {isEditMode ? 'Update Session' : 'Create Session'}
               </Button>
             </div>

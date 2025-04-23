@@ -153,24 +153,38 @@ const Courses = () => {
           // Available courses for enrollment
           availableCourses.length > 0 ? (
             availableCourses.map(course => (
-              <Card key={course._id} hover className="flex flex-col overflow-hidden">
-                <div className="h-32 bg-gradient-to-r from-primary-400 to-secondary-400 p-4 text-white">
-                  <h3 className="text-xl font-bold">{course.name || 'Untitled Course'}</h3>
-                  <p className="mt-1 text-sm opacity-80">{course.code || 'No code'}</p>
+              <Card key={course._id} className="h-full overflow-hidden transition-shadow duration-200 hover:shadow-lg bg-white dark:bg-gray-800">
+                <div className="relative h-40 overflow-hidden">
+                  {course.coverImage ? (
+                    <img 
+                      src={`http://localhost:5000${course.coverImage}`} 
+                      alt={course.title} 
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-r from-blue-500 to-indigo-600 p-4 text-center text-white">
+                      <h3 className="text-xl font-bold">{course.title}</h3>
+                    </div>
+                  )}
                 </div>
-                <div className="flex flex-col flex-grow p-4">
-                  <p className="mb-4 text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
-                    {course.description || 'No description available.'}
+                <div className="p-4">
+                  <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">{course.title}</h3>
+                  <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">
+                    {course.subject ? `Subject: ${course.subject}` : ''}
                   </p>
-                  <div className="mt-auto flex justify-end">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => handleEnroll(course._id)}
-                    >
-                      Enroll
-                    </Button>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {new Date(course.startDate).toLocaleDateString()} - {new Date(course.endDate).toLocaleDateString()}
+                    </span>
                   </div>
+                </div>
+                <div className="flex border-t border-gray-200 dark:border-gray-700">
+                  <Link 
+                    to={`/courses/${course._id}`} 
+                    className="flex-1 px-4 py-2 text-center text-sm font-medium text-primary-600 hover:bg-gray-50 hover:text-primary-700 dark:text-primary-400 dark:hover:bg-gray-700 dark:hover:text-primary-300"
+                  >
+                    View Details
+                  </Link>
                 </div>
               </Card>
             ))
@@ -187,23 +201,38 @@ const Courses = () => {
           // User's courses
           filteredCourses.length > 0 ? (
             filteredCourses.map(course => (
-              <Card key={course._id} hover className="flex flex-col overflow-hidden">
-                <div className="h-32 bg-gradient-to-r from-primary-400 to-secondary-400 p-4 text-white">
-                  <h3 className="text-xl font-bold">{course.name || 'Untitled Course'}</h3>
-                  <p className="mt-1 text-sm opacity-80">{course.code || 'No code'}</p>
+              <Card key={course._id} className="h-full overflow-hidden transition-shadow duration-200 hover:shadow-lg bg-white dark:bg-gray-800">
+                <div className="relative h-40 overflow-hidden">
+                  {course.coverImage ? (
+                    <img 
+                      src={`http://localhost:5000${course.coverImage}`} 
+                      alt={course.title} 
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-r from-blue-500 to-indigo-600 p-4 text-center text-white">
+                      <h3 className="text-xl font-bold">{course.title}</h3>
+                    </div>
+                  )}
                 </div>
-                <div className="flex flex-col flex-grow p-4">
-                  <p className="mb-4 text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
-                    {course.description || 'No description available.'}
+                <div className="p-4">
+                  <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">{course.title}</h3>
+                  <p className="mb-3 text-sm text-gray-700 dark:text-gray-300">
+                    {course.subject ? `Subject: ${course.subject}` : ''}
                   </p>
-                  <div className="mt-auto pt-4">
-                    <Link
-                      to={`/courses/${course._id}`}
-                      className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-                    >
-                      View course
-                    </Link>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {new Date(course.startDate).toLocaleDateString()} - {new Date(course.endDate).toLocaleDateString()}
+                    </span>
                   </div>
+                </div>
+                <div className="flex border-t border-gray-200 dark:border-gray-700">
+                  <Link 
+                    to={`/courses/${course._id}`} 
+                    className="flex-1 px-4 py-2 text-center text-sm font-medium text-primary-600 hover:bg-gray-50 hover:text-primary-700 dark:text-primary-400 dark:hover:bg-gray-700 dark:hover:text-primary-300"
+                  >
+                    View Details
+                  </Link>
                 </div>
               </Card>
             ))

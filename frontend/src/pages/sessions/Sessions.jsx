@@ -81,14 +81,14 @@ const Sessions = () => {
   }
   
   // Calculate session status
-  const getSessionStatus = (startTime, endTime) => {
+  const getSessionStatus = (session) => {
     const now = new Date()
-    const start = new Date(startTime)
-    const end = new Date(endTime)
+    const startTime = new Date(session.startTime)
+    const endTime = new Date(session.endTime)
     
-    if (now < start) {
+    if (now < startTime) {
       return 'upcoming'
-    } else if (now >= start && now <= end) {
+    } else if (now >= startTime && now <= endTime) {
       return 'active'
     } else {
       return 'ended'
@@ -181,96 +181,42 @@ const Sessions = () => {
       ) : (
         <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
           {filteredSessions.map((session) => {
-            const status = getSessionStatus(session.startTime, session.endTime)
+            const status = getSessionStatus(session)
             
             return (
-              <Card key={session._id} className="h-full">
-                <Card.Body className="flex flex-col justify-between">
-                  <div className="mb-4 flex justify-between">
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium 
-                        ${
-                          status === 'active'
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                            : status === 'upcoming'
-                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                        }`}
-                    >
-                      {status === 'active' ? 'Active' : status === 'upcoming' ? 'Upcoming' : 'Ended'}
-                    </span>
-                    
-                    {isTeacher && (
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          to={`/sessions/edit/${session._id}`}
-                          icon={<BiEdit className="h-4 w-4" />}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(session._id)}
-                          icon={<BiTrash className="h-4 w-4" />}
-                          className="text-red-500 hover:text-red-700"
-                        />
+              <Card key={session._id} className="overflow-hidden transition-shadow duration-200 hover:shadow-lg bg-white dark:bg-gray-800">
+                <Link to={`/sessions/${session._id}`} className="block">
+                  <div className="p-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">{session.title}</h3>
+                        <div className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+                          {session.course?.title || 'No course assigned'}
+                        </div>
+                        <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                          {new Date(session.startTime).toLocaleDateString()} | {new Date(session.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(session.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <Link
-                      to={`/sessions/${session._id}`}
-                      className="block text-lg font-semibold text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
-                    >
-                      {session.title}
-                    </Link>
-                    
-                    {session.course && (
-                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        Course: {session.course.name} ({session.course.code})
-                      </p>
-                    )}
-                    
-                    {session.instructor && (
-                      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        Instructor: {session.instructor.firstName} {session.instructor.lastName}
-                      </p>
-                    )}
-                    
-                    <div className="mt-2 space-y-1 text-sm text-gray-500 dark:text-gray-400">
-                      <p>
-                        <span className="font-medium">Starts:</span>{' '}
-                        {format(new Date(session.startTime), 'MMM d, yyyy - h:mm a')}
-                      </p>
-                      <p>
-                        <span className="font-medium">Ends:</span>{' '}
-                        {format(new Date(session.endTime), 'MMM d, yyyy - h:mm a')}
-                      </p>
+                      <div className="flex items-center">
+                        {status === 'upcoming' && (
+                          <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                            Upcoming
+                          </span>
+                        )}
+                        {status === 'active' && (
+                          <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200">
+                            Live Now
+                          </span>
+                        )}
+                        {status === 'ended' && (
+                          <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                            Completed
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    
-                    {session.description && (
-                      <p className="mt-2 line-clamp-2 text-sm text-gray-600 dark:text-gray-400">
-                        {session.description}
-                      </p>
-                    )}
                   </div>
-                  
-                  <div className="mt-4 flex justify-end">
-                    <Button
-                      to={`/sessions/${session._id}`}
-                      variant={status === 'active' ? 'primary' : 'outline'}
-                      size="sm"
-                    >
-                      {status === 'active'
-                        ? 'Join Now'
-                        : status === 'upcoming'
-                        ? 'View Details'
-                        : 'View Recording'}
-                    </Button>
-                  </div>
-                </Card.Body>
+                </Link>
               </Card>
             )
           })}

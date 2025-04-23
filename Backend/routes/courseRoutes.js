@@ -10,6 +10,9 @@ import {
   getCourseStudents,
   getTeacherCourses,
   getEnrolledCourses,
+  getAvailableStudents,
+  addStudentToCourse,
+  removeStudentFromCourse,
 } from '../controllers/courseController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { courseValidationRules, validateRequest } from '../middleware/validator.js';
@@ -320,5 +323,92 @@ router.put('/:id/drop', protect, authorize('student'), dropCourse);
  *         description: Not authorized to view course students
  */
 router.get('/:id/students', protect, authorize('teacher'), getCourseStudents);
+
+/**
+ * @swagger
+ * /api/courses/{id}/available-students:
+ *   get:
+ *     summary: Get available students for a course
+ *     tags: [Courses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of available students
+ *       404:
+ *         description: Course not found
+ *       403:
+ *         description: Not authorized to view available students
+ */
+router.get('/:id/available-students', protect, authorize('teacher'), getAvailableStudents);
+
+/**
+ * @swagger
+ * /api/courses/{id}/students:
+ *   post:
+ *     summary: Add a student to a course
+ *     tags: [Courses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               studentId:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Student added successfully
+ *       400:
+ *         description: Invalid student ID
+ *       404:
+ *         description: Course not found
+ *       403:
+ *         description: Not authorized to add student to this course
+ */
+router.post('/:id/students', protect, authorize('teacher'), addStudentToCourse);
+
+/**
+ * @swagger
+ * /api/courses/{id}/students/{studentId}:
+ *   delete:
+ *     summary: Remove a student from a course
+ *     tags: [Courses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: studentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Student removed successfully
+ *       404:
+ *         description: Course or student not found
+ *       403:
+ *         description: Not authorized to remove student from this course
+ */
+router.delete('/:id/students/:studentId', protect, authorize('teacher'), removeStudentFromCourse);
 
 export default router; 

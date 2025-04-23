@@ -82,14 +82,14 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
           <div className="flex items-center space-x-3">
             <div className="h-10 w-10 flex items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900">
               <span className="text-primary-700 dark:text-primary-300 font-semibold text-lg">
-                {user?.name?.[0] || 'U'}
+                {user?.name?.[0] || user?.firstName?.[0] || 'U'}
               </span>
             </div>
             <div>
-              <p className="font-medium text-gray-700 dark:text-gray-200">
-                {user?.name || 'User'}
+              <p className="font-medium text-gray-800 dark:text-gray-200">
+                {user?.name || user?.firstName || 'User'}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
+              <p className="text-xs text-gray-600 dark:text-gray-400 capitalize">
                 {user?.role || 'Student'}
               </p>
             </div>
@@ -106,8 +106,8 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
                   className={({ isActive }) => `
                     flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors
                     ${isActive 
-                      ? 'bg-primary-50 text-primary-700 dark:bg-primary-900 dark:text-primary-100' 
-                      : 'text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700'
+                      ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/80 dark:text-primary-200' 
+                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-200 dark:hover:bg-gray-700/70 dark:hover:text-white'
                     }
                   `}
                   end
@@ -123,7 +123,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         {/* Mobile close button */}
         <button
           onClick={toggleSidebar}
-          className="absolute top-3 right-3 rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500 lg:hidden dark:hover:bg-gray-700"
+          className="absolute top-3 right-3 rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-300"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

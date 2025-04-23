@@ -76,6 +76,14 @@ const UserSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    section: {
+      type: String,
+      default: '',
+    },
+    year: {
+      type: String,
+      default: '',
+    },
   },
   { timestamps: true }
 );

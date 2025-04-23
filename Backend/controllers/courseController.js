@@ -2,6 +2,7 @@ import Course from '../models/Course.js';
 import Enrollment from '../models/Enrollment.js';
 import User from '../models/User.js';
 import { ApiError } from '../middleware/errorHandler.js';
+import asyncHandler from 'express-async-handler';
 
 /**
  * @desc    Create a new course
@@ -147,6 +148,15 @@ export const getCourseById = async (req, res, next) => {
     // Get enrollment count
     const enrollmentCount = await Enrollment.countDocuments({ course: course._id, status: 'active' });
 
+    // Find all students enrolled in this course
+    const enrollments = await Enrollment.find({
+      course: course._id,
+      status: 'active',
+    }).populate('student', 'name email profilePicture firstName lastName section year');
+
+    // Extract student info
+    const students = enrollments.map(enrollment => enrollment.student);
+
     // Check if the requesting user is enrolled (if student)
     let isEnrolled = false;
     if (req.user.role === 'student') {
@@ -167,6 +177,8 @@ export const getCourseById = async (req, res, next) => {
       data: {
         ...course.toObject(),
         enrollmentCount,
+        students,
+        studentsCount: students.length,
         isEnrolled,
         isTeacher
       },
@@ -367,4 +379,160 @@ export const getCourseStudents = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-}; 
+};
+
+// @desc    Get available students for a course
+// @route   GET /api/courses/:id/available-students
+// @access  Private (teachers only)
+export const getAvailableStudents = asyncHandler(async (req, res) => {
+  const course = await Course.findById(req.params.id);
+  
+  if (!course) {
+    res.status(404);
+    throw new Error('Course not found');
+  }
+  
+  // Check if user is the teacher of this course
+  if (course.teacher.toString() !== req.user._id.toString()) {
+    res.status(403);
+    throw new Error('Not authorized to view available students for this course');
+  }
+  
+  // Get all students (users with role 'student')
+  const allStudents = await User.find({ 
+    role: 'student' 
+  }).select('_id name email firstName lastName section year');
+  
+  // Get enrolled students from Enrollment collection
+  const enrollments = await Enrollment.find({
+    course: course._id,
+    status: 'active'
+  });
+  
+  // Extract enrolled student IDs
+  const enrolledStudentIds = enrollments.map(enrollment => enrollment.student.toString());
+  
+  // Filter out already enrolled students
+  const availableStudents = allStudents.filter(
+    student => !enrolledStudentIds.includes(student._id.toString())
+  );
+  
+  res.status(200).json({
+    success: true,
+    data: availableStudents
+  });
+});
+
+// @desc    Add a student to a course
+// @route   POST /api/courses/:id/students
+// @access  Private (teachers only)
+export const addStudentToCourse = asyncHandler(async (req, res) => {
+  const { studentId } = req.body;
+  
+  if (!studentId) {
+    res.status(400);
+    throw new Error('Please provide a student ID');
+  }
+  
+  const course = await Course.findById(req.params.id);
+  
+  if (!course) {
+    res.status(404);
+    throw new Error('Course not found');
+  }
+  
+  // Check if user is the teacher of this course
+  if (course.teacher.toString() !== req.user._id.toString()) {
+    res.status(403);
+    throw new Error('Not authorized to add students to this course');
+  }
+  
+  // Check if student exists
+  const student = await User.findById(studentId);
+  
+  if (!student || student.role !== 'student') {
+    res.status(404);
+    throw new Error('Student not found');
+  }
+  
+  // Check if student is already enrolled
+  const existingEnrollment = await Enrollment.findOne({
+    course: course._id,
+    student: studentId
+  });
+  
+  if (existingEnrollment && existingEnrollment.status === 'active') {
+    res.status(400);
+    throw new Error('Student is already enrolled in this course');
+  } else if (existingEnrollment && existingEnrollment.status === 'dropped') {
+    // If student previously dropped the course, reactivate enrollment
+    existingEnrollment.status = 'active';
+    await existingEnrollment.save();
+    
+    res.status(200).json({
+      success: true,
+      message: 'Student re-enrolled to course successfully'
+    });
+    return;
+  }
+  
+  // Create new enrollment
+  await Enrollment.create({
+    course: course._id,
+    student: studentId,
+    status: 'active',
+    enrollmentDate: Date.now()
+  });
+  
+  res.status(201).json({
+    success: true,
+    message: 'Student added to course successfully'
+  });
+});
+
+// @desc    Remove a student from a course
+// @route   DELETE /api/courses/:id/students/:studentId
+// @access  Private (teachers only)
+export const removeStudentFromCourse = asyncHandler(async (req, res) => {
+  const course = await Course.findById(req.params.id);
+  
+  if (!course) {
+    res.status(404);
+    throw new Error('Course not found');
+  }
+  
+  // Check if user is the teacher of this course
+  if (course.teacher.toString() !== req.user._id.toString()) {
+    res.status(403);
+    throw new Error('Not authorized to remove students from this course');
+  }
+  
+  // Check if student exists
+  const student = await User.findById(req.params.studentId);
+  
+  if (!student || student.role !== 'student') {
+    res.status(404);
+    throw new Error('Student not found');
+  }
+  
+  // Check if student is enrolled in the course
+  const enrollment = await Enrollment.findOne({
+    course: course._id,
+    student: req.params.studentId,
+    status: 'active'
+  });
+  
+  if (!enrollment) {
+    res.status(400);
+    throw new Error('Student is not enrolled in this course');
+  }
+  
+  // Update enrollment status to dropped instead of deleting
+  enrollment.status = 'dropped';
+  await enrollment.save();
+  
+  res.status(200).json({
+    success: true,
+    message: 'Student removed from course successfully'
+  });
+}); 

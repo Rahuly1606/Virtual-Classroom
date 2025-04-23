@@ -144,6 +144,39 @@ const unenrollFromCourse = async (courseId) => {
   }
 }
 
+// Get available students for enrollment in a course
+const getAvailableStudents = async (courseId) => {
+  try {
+    const response = await axiosInstance.get(`/courses/${courseId}/available-students`)
+    return response.data.data || []
+  } catch (error) {
+    console.error(`Error fetching available students for course ${courseId}:`, error)
+    throw error
+  }
+}
+
+// Add a student to a course (teacher only)
+const addStudentToCourse = async (courseId, studentId) => {
+  try {
+    const response = await axiosInstance.post(`/courses/${courseId}/students`, { studentId })
+    return response.data.data
+  } catch (error) {
+    console.error(`Error adding student to course ${courseId}:`, error)
+    throw error
+  }
+}
+
+// Remove a student from a course (teacher only)
+const removeStudentFromCourse = async (courseId, studentId) => {
+  try {
+    const response = await axiosInstance.delete(`/courses/${courseId}/students/${studentId}`)
+    return response.data
+  } catch (error) {
+    console.error(`Error removing student from course ${courseId}:`, error)
+    throw error
+  }
+}
+
 const courseService = {
   getCourses,
   getCourseById,
@@ -153,7 +186,10 @@ const courseService = {
   updateCourse,
   deleteCourse,
   enrollInCourse,
-  unenrollFromCourse
+  unenrollFromCourse,
+  getAvailableStudents,
+  addStudentToCourse,
+  removeStudentFromCourse
 }
 
 export default courseService 

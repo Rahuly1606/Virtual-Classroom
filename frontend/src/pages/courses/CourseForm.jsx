@@ -99,6 +99,23 @@ const CourseForm = () => {
       newErrors.title = 'Course title is required'
     }
     
+    if (!formData.startDate) {
+      newErrors.startDate = 'Start date is required'
+    }
+    
+    if (!formData.endDate) {
+      newErrors.endDate = 'End date is required'
+    }
+    
+    if (formData.startDate && formData.endDate) {
+      const start = new Date(formData.startDate)
+      const end = new Date(formData.endDate)
+      
+      if (end < start) {
+        newErrors.endDate = 'End date must be after start date'
+      }
+    }
+    
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -134,12 +151,19 @@ const CourseForm = () => {
         if (isEditMode) {
           result = await courseService.updateCourse(id, formDataToSend)
           toast.success('Course updated successfully')
+          navigate(`/courses/${id}`)
         } else {
           result = await courseService.createCourse(formDataToSend)
           toast.success('Course created successfully')
+          
+          // Ask if teacher wants to schedule a session immediately
+          const wantToSchedule = window.confirm('Would you like to schedule a session for this course now?')
+          if (wantToSchedule) {
+            navigate(`/sessions/create?courseId=${result._id}`)
+          } else {
+            navigate(`/courses/${result._id}`)
+          }
         }
-        
-        navigate(`/courses/${isEditMode ? id : result._id}`)
       } catch (error) {
         console.error('Error saving course:', error)
         toast.error(isEditMode ? 'Failed to update course' : 'Failed to create course')
@@ -242,6 +266,8 @@ const CourseForm = () => {
                 value={formData.startDate}
                 onChange={handleChange}
                 error={errors.startDate}
+                className="w-full"
+                aria-label="Course Start Date"
               />
               
               <Input
@@ -252,6 +278,9 @@ const CourseForm = () => {
                 value={formData.endDate}
                 onChange={handleChange}
                 error={errors.endDate}
+                className="w-full"
+                min={formData.startDate}  
+                aria-label="Course End Date"
               />
             </div>
             

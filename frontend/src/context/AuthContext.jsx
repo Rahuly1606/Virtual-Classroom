@@ -159,6 +159,24 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  // Change password function
+  const changePassword = async ({ oldPassword, newPassword }) => {
+    try {
+      setLoading(true)
+      const result = await authService.changePassword({ oldPassword, newPassword })
+      toast.success('Password changed successfully!')
+      return result
+    } catch (error) {
+      const errorMessage = error.response?.data?.errors?.[0]?.message || 
+                          error.response?.data?.message || 
+                          'Failed to change password';
+      toast.error(errorMessage)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const contextValue = {
     user,
     token,
@@ -167,6 +185,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateProfile,
+    changePassword,
     isAuthenticated: !!token,
     isTeacher: user?.role === 'teacher',
     isStudent: user?.role === 'student',

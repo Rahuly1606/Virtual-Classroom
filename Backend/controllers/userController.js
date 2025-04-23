@@ -112,6 +112,8 @@ export const getCurrentUser = async (req, res, next) => {
         role: user.role,
         profilePicture: user.profilePicture,
         bio: user.bio,
+        section: user.section,
+        year: user.year
       },
     });
   } catch (error) {
@@ -141,6 +143,8 @@ export const getUserProfile = async (req, res, next) => {
         role: user.role,
         profilePicture: user.profilePicture,
         bio: user.bio,
+        section: user.section,
+        year: user.year,
         createdAt: user.createdAt,
       },
     });
@@ -165,6 +169,8 @@ export const updateUserProfile = async (req, res, next) => {
     // Update fields if provided
     if (req.body.name) user.name = req.body.name;
     if (req.body.bio) user.bio = req.body.bio;
+    if (req.body.section) user.section = req.body.section;
+    if (req.body.year) user.year = req.body.year;
 
     // Handle profile picture upload
     if (req.file) {
@@ -182,7 +188,49 @@ export const updateUserProfile = async (req, res, next) => {
         role: updatedUser.role,
         profilePicture: updatedUser.profilePicture,
         bio: updatedUser.bio,
+        section: updatedUser.section,
+        year: updatedUser.year,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Change user password
+ * @route   PUT /api/users/change-password
+ * @access  Private
+ */
+export const changePassword = async (req, res, next) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+
+    // Validate input
+    if (!oldPassword || !newPassword) {
+      throw new ApiError('Please provide both old and new passwords', 400);
+    }
+
+    // Find user with password
+    const user = await User.findById(req.user._id).select('+password');
+
+    if (!user) {
+      throw new ApiError('User not found', 404);
+    }
+
+    // Verify old password
+    const isMatch = await user.comparePassword(oldPassword);
+    if (!isMatch) {
+      throw new ApiError('Old password is incorrect', 401);
+    }
+
+    // Set new password
+    user.password = newPassword;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Password updated successfully',
     });
   } catch (error) {
     next(error);

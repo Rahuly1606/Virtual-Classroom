@@ -37,7 +37,7 @@ import mongoose from 'mongoose';
  *           description: URL for the host (teacher) to access the video room with host privileges
  *         meetingId:
  *           type: string
- *           description: ID of the video meeting (Whereby/Jitsi/Zoom)
+ *           description: ID of the video meeting (Jitsi/Zoom)
  *         recordingUrl:
  *           type: string
  *           description: URL to the recorded session (if available)
@@ -111,8 +111,8 @@ const SessionSchema = new mongoose.Schema(
     },
     videoProvider: {
       type: String,
-      enum: ['whereby', 'jitsi', 'other'],
-      default: 'whereby',
+      enum: ['jitsi', 'other'],
+      default: 'jitsi',
     },
   },
   { timestamps: true }

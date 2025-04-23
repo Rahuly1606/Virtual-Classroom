@@ -18,6 +18,7 @@ const Session = () => {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [joining, setJoining] = useState(false)
   
   useEffect(() => {
     const fetchSession = async () => {
@@ -63,31 +64,41 @@ const Session = () => {
   
   const sessionStatus = getSessionStatus()
   
-  // Handle joining the session
-  const handleJoinSession = () => {
-    // If meeting URL exists, open in new tab
-    if (session.meetingUrl) {
-      window.open(session.meetingUrl, '_blank', 'noopener,noreferrer')
-    } else {
-      // Otherwise navigate to the built-in classroom
-      navigate(`/classroom/${id}`)
+  // Handle joining session
+  const handleJoinSession = async () => {
+    try {
+      setJoining(true)
+      
+      // Navigate to the session detail page where the Jitsi component is embedded
+      navigate(`/sessions/${session._id}/detail`)
+      
+    } catch (error) {
+      console.error('Error joining session:', error)
+      toast.error('Failed to join session')
+      setJoining(false)
     }
   }
   
   // Calculate if session can be joined
   const canJoinSession = () => {
-    if (!session) return false
+    if (!session) return false;
     
-    const now = new Date()
-    const startTime = new Date(session.startTime)
-    const endTime = new Date(session.endTime)
+    const now = new Date();
+    const startTime = new Date(session.startTime);
+    const endTime = new Date(session.endTime);
     
-    // Allow joining 10 minutes before start time
-    const joinBuffer = new Date(startTime)
-    joinBuffer.setMinutes(joinBuffer.getMinutes() - 10)
-    
-    return now >= joinBuffer && now <= endTime
-  }
+    // Teachers can join/start 15 minutes early and anytime during the session window
+    if (isTeacher) {
+      const teacherJoinBuffer = new Date(startTime);
+      teacherJoinBuffer.setMinutes(teacherJoinBuffer.getMinutes() - 15);
+      return now >= teacherJoinBuffer && now <= endTime;
+    } else {
+      // Students can only join 5 minutes before start time and during the session
+      const studentJoinBuffer = new Date(startTime);
+      studentJoinBuffer.setMinutes(studentJoinBuffer.getMinutes() - 5);
+      return now >= studentJoinBuffer && now <= endTime;
+    }
+  };
   
   // Format duration in hours and minutes
   const formatDuration = () => {
@@ -107,6 +118,22 @@ const Session = () => {
       return `${diffHrs} hour${diffHrs > 1 ? 's' : ''} ${diffMins} minutes`
     }
   }
+  
+  // Format how long before the session start time joining is allowed
+  const formatTimeToStart = () => {
+    return isTeacher ? '15 minutes' : '5 minutes';
+  }
+  
+  // Add a helper function to format the join time message
+  const getJoinTimeMessage = () => {
+    const startTime = new Date(session.startTime);
+    
+    if (isTeacher) {
+      return `You can start this session 15 minutes before the scheduled time (${format(startTime, 'h:mm a')}).`;
+    } else {
+      return `This session will be available to join 5 minutes before the start time (${format(startTime, 'h:mm a')}).`;
+    }
+  };
   
   if (loading) {
     return (
@@ -199,7 +226,7 @@ const Session = () => {
             </Card.Header>
             <Card.Body>
               <div className="space-y-4">
-                {canJoinSession() && (
+                {canJoinSession() ? (
                   <div className="flex justify-center">
                     <Button
                       variant="primary"
@@ -207,9 +234,21 @@ const Session = () => {
                       onClick={handleJoinSession}
                       icon={<BiVideo className="h-5 w-5" />}
                       className="w-full sm:w-auto"
+                      disabled={joining}
                     >
+                      {joining ? <Spinner size="sm" className="mr-2" /> : null}
                       Join Session Now
                     </Button>
+                  </div>
+                ) : (
+                  <div className="flex justify-center">
+                    <div className="rounded-md bg-gray-100 p-4 text-center dark:bg-gray-800">
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {new Date() < new Date(session.startTime) 
+                          ? getJoinTimeMessage()
+                          : 'This session has ended and is no longer available to join.'}
+                      </p>
+                    </div>
                   </div>
                 )}
                 
@@ -305,8 +344,8 @@ const Session = () => {
                     <div className="ml-3">
                       <span className="block font-medium text-gray-700 dark:text-gray-200">Course:</span>
                       <span className="text-gray-600 dark:text-gray-400">
-                        {session.course.name}
-                        {session.course.code && <span className="block text-sm">{session.course.code}</span>}
+                        {session.course.title || session.course.name}
+                        {session.course.subject && <span className="block text-sm">{session.course.subject}</span>}
                       </span>
                     </div>
                   </div>

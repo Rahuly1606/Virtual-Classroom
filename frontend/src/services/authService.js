@@ -91,6 +91,17 @@ const updateProfile = async (userData) => {
   }
 }
 
+// Change user password
+const changePassword = async (passwordData) => {
+  try {
+    const response = await axiosInstance.put('/users/change-password', passwordData)
+    return response.data
+  } catch (error) {
+    console.error('Change password error:', error)
+    throw error
+  }
+}
+
 // Logout user
 const logout = () => {
   try {
@@ -109,6 +120,7 @@ const authService = {
   register,
   getCurrentUser,
   updateProfile,
+  changePassword,
   logout
 }
 

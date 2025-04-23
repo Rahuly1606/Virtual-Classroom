@@ -9,7 +9,7 @@ const Card = ({
   onClick,
   ...props
 }) => {
-  const baseClasses = 'rounded-lg shadow-md overflow-hidden'
+  const baseClasses = 'rounded-lg overflow-hidden border border-gray-200 bg-white shadow-sm'
   
   const variants = {
     default: 'bg-white dark:bg-gray-800',
@@ -20,7 +20,7 @@ const Card = ({
   }
   
   const hoverClasses = hover 
-    ? 'transition-transform duration-300 ease-in-out hover:-translate-y-1 hover:shadow-lg' 
+    ? 'transition-shadow duration-200 hover:shadow-md' 
     : ''
   
   const clickableClasses = clickable 
@@ -44,13 +44,16 @@ const Card = ({
 
 // Card subcomponents
 Card.Header = ({ children, className = '', ...props }) => (
-  <div className={`p-4 border-b border-gray-200 dark:border-gray-700 ${className}`} {...props}>
+  <div
+    className={`border-b border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-700 ${className}`}
+    {...props}
+  >
     {children}
   </div>
 )
 
 Card.Body = ({ children, className = '', ...props }) => (
-  <div className={`p-4 ${className}`} {...props}>
+  <div className={`p-4 text-gray-800 dark:text-gray-200 ${className}`} {...props}>
     {children}
   </div>
 )

@@ -7,6 +7,7 @@ import {
   getUsers,
   getUserById,
   getCurrentUser,
+  changePassword,
 } from '../controllers/userController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { userValidationRules, validateRequest } from '../middleware/validator.js';
@@ -131,6 +132,10 @@ router.get('/profile', protect, getUserProfile);
  *                 type: string
  *               bio:
  *                 type: string
+ *               section:
+ *                 type: string
+ *               year:
+ *                 type: string
  *               profilePicture:
  *                 type: string
  *                 format: binary
@@ -149,6 +154,42 @@ router.put(
   userValidationRules.updateProfile,
   validateRequest,
   updateUserProfile
+);
+
+/**
+ * @swagger
+ * /api/users/change-password:
+ *   put:
+ *     summary: Change user password
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - oldPassword
+ *               - newPassword
+ *             properties:
+ *               oldPassword:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
+ *       401:
+ *         description: Old password is incorrect
+ */
+router.put(
+  '/change-password',
+  protect,
+  userValidationRules.changePassword,
+  validateRequest,
+  changePassword
 );
 
 /**
