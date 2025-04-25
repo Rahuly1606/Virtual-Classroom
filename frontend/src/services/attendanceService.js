@@ -36,13 +36,25 @@ const getCourseAttendanceReport = async (courseId) => {
   return response.data
 }
 
+// Get attendance statistics for all students in a course (teacher only)
+const getCourseAttendanceStats = async (courseId) => {
+  try {
+    const response = await axiosInstance.get(`/attendance/stats/course/${courseId}`)
+    return response.data
+  } catch (error) {
+    console.error(`Error fetching attendance stats for course ${courseId}:`, error)
+    throw error
+  }
+}
+
 const attendanceService = {
   getSessionAttendance,
   getStudentAttendance,
   getStudentCourseAttendance,
   markAttendance,
   updateAttendance,
-  getCourseAttendanceReport
+  getCourseAttendanceReport,
+  getCourseAttendanceStats
 }
 
 export default attendanceService 

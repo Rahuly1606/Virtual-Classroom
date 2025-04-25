@@ -32,6 +32,9 @@ import bcrypt from 'bcrypt';
  *         bio:
  *           type: string
  *           description: Short biography of the user
+ *         isEmailVerified:
+ *           type: boolean
+ *           description: Whether the user's email has been verified
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -84,6 +87,10 @@ const UserSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
@@ -104,7 +111,15 @@ UserSchema.pre('save', async function (next) {
 
 // Method to compare password
 UserSchema.methods.comparePassword = async function (candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
+  try {
+    if (!candidatePassword || !this.password) {
+      return false;
+    }
+    return await bcrypt.compare(candidatePassword, this.password);
+  } catch (error) {
+    console.error('Password comparison error:', error);
+    return false;
+  }
 };
 
 const User = mongoose.model('User', UserSchema);

@@ -733,7 +733,7 @@ const CourseDetail = () => {
                   Add Students
                 </Button>
                 <Button
-                  to={`/attendance?courseId=${id}`}
+                  to={`/attendance/stats/${id}`}
                   variant="outline"
                   icon={<BiCalendarCheck className="h-5 w-5" />}
                 >

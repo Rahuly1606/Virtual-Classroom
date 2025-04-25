@@ -19,17 +19,35 @@ const getAuthToken = () => {
   return token
 }
 
+// List of public endpoints that don't require authentication
+const publicEndpoints = [
+  '/users/register',
+  '/users/login',
+  '/users/send-otp-public',
+  '/users/verify-email-public',
+  '/users/password-reset/send-otp',
+  '/users/password-reset/verify'
+]
+
 // Add a request interceptor to add the auth token to every request
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = getAuthToken()
-    if (token) {
-      // Set the Authorization header with Bearer token
-      config.headers.Authorization = `Bearer ${token}`
-      console.log('Setting Authorization header for request to:', config.url)
+    // Skip token for public endpoints
+    const isPublicEndpoint = publicEndpoints.some(endpoint => config.url.includes(endpoint))
+    
+    if (!isPublicEndpoint) {
+      const token = getAuthToken()
+      if (token) {
+        // Set the Authorization header with Bearer token
+        config.headers.Authorization = `Bearer ${token}`
+        console.log('Setting Authorization header for request to:', config.url)
+      } else {
+        console.log('No token available for request to:', config.url)
+      }
     } else {
-      console.log('No token available for request to:', config.url)
+      console.log('Public endpoint, skipping token for:', config.url)
     }
+    
     return config
   },
   (error) => {
@@ -58,11 +76,16 @@ axiosInstance.interceptors.response.use(
     
     // Handle 401 Unauthorized errors (token expired)
     if (error.response && error.response.status === 401) {
-      console.log('Received 401 unauthorized, logging out')
-      authService.logout() // Use the authService logout function
-      // Don't use navigate here as it's outside React context
-      // Instead redirect manually
-      window.location.href = '/login'
+      // Skip automatic logout for public endpoints
+      const isPublicEndpoint = publicEndpoints.some(endpoint => error.config?.url.includes(endpoint))
+      
+      if (!isPublicEndpoint) {
+        console.log('Received 401 unauthorized, logging out')
+        authService.logout() // Use the authService logout function
+        // Don't use navigate here as it's outside React context
+        // Instead redirect manually
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }

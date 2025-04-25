@@ -54,6 +54,12 @@ import mongoose from 'mongoose';
  *           type: string
  *           format: date-time
  *           description: Date when the session was last updated
+ *         videoProvider:
+ *           type: string
+ *           description: Provider for video conferencing (jitsi, other)
+ *         isActive:
+ *           type: boolean
+ *           description: Whether the session is currently active
  */
 const SessionSchema = new mongoose.Schema(
   {
@@ -111,9 +117,17 @@ const SessionSchema = new mongoose.Schema(
     },
     videoProvider: {
       type: String,
-      enum: ['jitsi', 'other'],
+      enum: ['jitsi', 'other', 'hms'],
       default: 'jitsi',
     },
+    isActive: {
+      type: Boolean,
+      default: false,
+    },
+    activatedAt: {
+      type: Date,
+      default: null,
+    }
   },
   { timestamps: true }
 );

@@ -198,13 +198,16 @@ const SessionForm = () => {
     try {
       setLoading(true)
       
+      // Format the data properly for the API
       const sessionData = {
-        title: formData.title,
-        description: formData.description,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
         startTime: new Date(formData.startTime).toISOString(),
         endTime: new Date(formData.endTime).toISOString(),
-        course: formData.courseId
+        course: formData.courseId // Ensure we use the field name expected by the API
       }
+      
+      console.log('Submitting session data:', sessionData)
       
       if (isEditMode) {
         await sessionService.updateSession(id, sessionData)
@@ -217,7 +220,13 @@ const SessionForm = () => {
       navigate('/sessions')
     } catch (error) {
       console.error('Error saving session:', error)
-      toast.error(`Failed to ${isEditMode ? 'update' : 'create'} session`)
+      
+      // Extract and display detailed error message
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          `Failed to ${isEditMode ? 'update' : 'create'} session`
+      
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }

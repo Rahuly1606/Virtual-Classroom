@@ -34,10 +34,9 @@ const SessionDetail = () => {
   const [session, setSession] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [showMeeting, setShowMeeting] = useState(false)
-  const [hasJoined, setHasJoined] = useState(false)
-  const [isActive, setIsActive] = useState(false)
   const [sessionStatus, setSessionStatus] = useState(null)
   const [timeLeft, setTimeLeft] = useState(null)
+  const [liveClassData, setLiveClassData] = useState(null)
   const jitsiContainerRef = useRef(null);
   const sessionApiRef = useRef(null);
   
@@ -45,66 +44,39 @@ const SessionDetail = () => {
   useEffect(() => {
     const timer = setInterval(() => {
       if (session) {
-        updateSessionStatus();
+        fetchSessionStatus();
       }
     }, 10000); // Update every 10 seconds
     
     return () => clearInterval(timer);
   }, [session]);
   
-  // Calculate session timing status
-  const updateSessionStatus = () => {
-    if (!session) return;
-    
-    const now = new Date();
-    const startTime = new Date(session.startTime);
-    const endTime = new Date(session.endTime);
-    
-    // Allow teachers to join 15 minutes early and anytime during the session
-    const teacherJoinBuffer = new Date(startTime);
-    teacherJoinBuffer.setMinutes(teacherJoinBuffer.getMinutes() - 15);
-    
-    // Students can join 5 minutes early but only if the session is active
-    const studentJoinBuffer = new Date(startTime);
-    studentJoinBuffer.setMinutes(studentJoinBuffer.getMinutes() - 5);
-    
-    // Calculate time left until session starts
-    if (now < startTime) {
-      const diffMs = startTime - now;
-      const diffMinutes = Math.floor(diffMs / 60000);
-      setTimeLeft(`${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''}`);
-    } else {
-      setTimeLeft(null);
-    }
-    
-    // For teachers:
-    // - Can start the session 15 minutes before the scheduled time
-    // - Can start or join anytime during the session (between start and end)
-    // For students:
-    // - Can only join when the session is live (during the scheduled time)
-    // - Can join 5 minutes early if the session is about to start
-    
-    // Set session status
-    if (now > endTime) {
-      // Session has ended for everyone
-      setSessionStatus('ended');
-      setIsActive(false);
-    } else if (now >= startTime) {
-      // Session is currently active (within scheduled time)
-      setSessionStatus('live');
-      setIsActive(true);
-    } else if (isTeacher && now >= teacherJoinBuffer) {
-      // Teacher can start the session early (15 min before)
-      setSessionStatus('teacher-ready');
-      setIsActive(true);
-    } else if (!isTeacher && now >= studentJoinBuffer) {
-      // Students can join 5 min before if the session is about to start
-      setSessionStatus('student-ready');
-      setIsActive(true);
-    } else {
-      // Upcoming session, not yet ready to join
-      setSessionStatus('upcoming');
-      setIsActive(false);
+  // Fetch session status from API
+  const fetchSessionStatus = async () => {
+    try {
+      if (!id) return;
+      
+      const statusData = await sessionService.getSessionStatus(id);
+      setSessionStatus({
+        isActive: statusData.isActive,
+        isCompleted: statusData.isCompleted,
+        timingStatus: statusData.timingStatus,
+        canJoin: statusData.canJoin
+      });
+      
+      // Calculate time left if upcoming
+      if (statusData.timingStatus === 'upcoming') {
+        const now = new Date();
+        const startTime = new Date(session.startTime);
+        const diffMs = startTime - now;
+        const diffMinutes = Math.floor(diffMs / 60000);
+        setTimeLeft(`${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''}`);
+      } else {
+        setTimeLeft(null);
+      }
+      
+    } catch (error) {
+      console.error('Error fetching session status:', error);
     }
   };
   
@@ -124,8 +96,8 @@ const SessionDetail = () => {
         const sessionData = await sessionService.getSessionById(id)
         setSession(sessionData)
         
-        // Update session status
-        updateSessionStatus();
+        // Fetch initial status
+        await fetchSessionStatus();
         
       } catch (error) {
         console.error('Error fetching session data:', error)
@@ -137,7 +109,7 @@ const SessionDetail = () => {
     }
     
     fetchSessionData()
-  }, [id, navigate, isTeacher])
+  }, [id, navigate])
   
   // Handle session deletion
   const handleDeleteSession = async () => {
@@ -161,33 +133,43 @@ const SessionDetail = () => {
       setStartingSession(true);
       
       // If teachers start the session early, let's provide appropriate feedback
-      if (sessionStatus === 'teacher-ready') {
-        toast.info('Starting session early. Students will be able to join at the scheduled time.');
-      } else if (sessionStatus === 'upcoming') {
-        toast.warn('Starting session ahead of schedule.');
+      if (sessionStatus?.timingStatus === 'upcoming') {
+        toast.info('Starting session ahead of schedule. Students will be notified.');
       }
       
-      // Teacher is starting the session - record this in attendance if needed
-      // This could be expanded to update the session status in the backend
+      // Call the start session API
+      const data = await sessionService.startSession(id);
       
-      // Show the Jitsi component for the teacher
-      setShowMeeting(true);
+      // Log the data for debugging
+      console.log('Start session response:', data);
+      
+      // Set video session data
+      if (data.videoLink) {
+        setLiveClassData({
+          id: id,
+          videoLink: data.videoLink
+        });
+        setShowMeeting(true);
+        toast.success('Live classroom started successfully');
+      } else {
+        throw new Error('Failed to get classroom data');
+      }
       
     } catch (error) {
       console.error('Error starting session:', error);
-      toast.error('Failed to start session');
+      toast.error('Failed to start the classroom session: ' + (error.message || 'Unknown error'));
     } finally {
       setStartingSession(false);
     }
   };
   
-  // Handle joining video session (for students)
+  // Handle joining video session
   const handleJoinSession = async () => {
     if (isTeacher) {
       return handleStartSession();
     }
     
-    if (!isActive) {
+    if (!sessionStatus?.canJoin) {
       toast.warning(timeLeft 
         ? `This session is not available yet. You can join in ${timeLeft}.` 
         : 'This session is not currently active'
@@ -196,484 +178,398 @@ const SessionDetail = () => {
     }
     
     try {
-      setJoining(true)
+      setJoining(true);
       
-      // Mark attendance for students
-      if (!isTeacher) {
-        await markAttendance()
+      // Call the join session API
+      const data = await sessionService.joinSession(id);
+      
+      // Log the data for debugging
+      console.log('Join session response:', data);
+      
+      // Set video session data
+      if (data.videoLink) {
+        setLiveClassData({
+          id: id,
+          videoLink: data.videoLink
+        });
+        setShowMeeting(true);
+        toast.success('Joining classroom session');
+      } else {
+        throw new Error('Failed to get join data');
       }
       
-      // Show the Jitsi component
-      setShowMeeting(true)
-      
     } catch (error) {
-      console.error('Error joining session:', error)
-      toast.error('Failed to join video conference')
+      console.error('Error joining session:', error);
+      toast.error('Failed to join the classroom: ' + (error.message || 'Unknown error'));
     } finally {
-      setJoining(false)
+      setJoining(false);
     }
-  }
+  };
   
   // Handle meeting joined event
   const handleMeetingJoined = () => {
-    setHasJoined(true)
-    
     // Different messages based on role
     if (isTeacher) {
-      toast.success('You have started the session as host')
+      toast.success('You have started the session as host');
     } else {
-      toast.success('You have joined the meeting')
+      toast.success('You have joined the classroom');
     }
-  }
+  };
   
   // Handle meeting left event
-  const handleMeetingLeft = () => {
-    setHasJoined(false)
-    setShowMeeting(false)
+  const handleMeetingLeft = async () => {
+    setShowMeeting(false);
     
-    // Different messages based on role
+    // If teacher ends session, call the end session API
     if (isTeacher) {
-      toast.info('You have ended the session')
-    } else {
-      toast.info('You have left the meeting')
-    }
-  }
-  
-  // Mark attendance when student joins session
-  const markAttendance = async () => {
-    try {
-      // Only students should call this endpoint
-      if (!isTeacher) {
-        await attendanceService.markAttendance(id, { present: true })
+      try {
+        await sessionService.endSession(id);
+        toast.info('You have ended the live session');
+      } catch (error) {
+        console.error('Error ending session:', error);
       }
-    } catch (error) {
-      console.error('Error marking attendance:', error)
     }
-  }
+  };
   
-  // Format date display
+  // Handle meeting error
+  const handleMeetingError = (error) => {
+    console.error('Meeting error:', error);
+    toast.error('Video meeting error: ' + error.message);
+  };
+  
+  // Format date for display
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString()
-  }
+    return new Date(dateString).toLocaleString();
+  };
   
-  // Get button text based on session status and user role
+  // Get appropriate button text based on session status
   const getActionButtonText = () => {
     if (isTeacher) {
-      if (sessionStatus === 'live') {
-        return startingSession ? 'Starting Session...' : 'Start Session';
-      } else if (sessionStatus === 'teacher-ready') {
-        return startingSession ? 'Starting Session Early...' : 'Start Session Early';
-      } else if (sessionStatus === 'upcoming') {
-        return `Start Session Early (${timeLeft} until scheduled time)`;
+      if (joining || startingSession) {
+        return 'Starting...';
+      } else if (showMeeting) {
+        return 'End Session';
+      } else if (sessionStatus?.isCompleted) {
+        return 'Session Completed';
+      } else if (sessionStatus?.isActive) {
+        return 'Rejoin Session';
       } else {
-        return 'Session Ended';
+        return 'Start Session';
       }
     } else {
-      // For students
-      if (sessionStatus === 'live') {
-        return joining ? 'Joining...' : 'Join Session';
-      } else if (sessionStatus === 'student-ready') {
-        return `Join Session (Starts in ${timeLeft})`;
-      } else if (sessionStatus === 'upcoming') {
-        return `Waiting for Teacher (Available in ${timeLeft})`;
+      if (joining) {
+        return 'Joining...';
+      } else if (showMeeting) {
+        return 'Leave Session';
+      } else if (sessionStatus?.isCompleted) {
+        return 'Session Completed';
+      } else if (sessionStatus?.isActive) {
+        return 'Join Session';
       } else {
-        return 'Session Ended';
+        return 'Session Not Started';
       }
     }
   };
   
-  // Get status label for display
+  // Get status label based on session status
   const getStatusLabel = () => {
-    switch (sessionStatus) {
-      case 'live':
-        return isTeacher ? 'Active (Can Start Now)' : 'Active';
-      case 'teacher-ready':
-        return isTeacher ? 'Ready to Start Early' : 'Starting Soon';
-      case 'student-ready':
-        return 'Starting Soon';
-      case 'upcoming':
-        return isTeacher ? 'Can Start Early' : 'Upcoming';
-      case 'ended':
-        return 'Completed';
-      default:
-        return 'Unknown';
+    if (sessionStatus?.isCompleted) {
+      return 'Completed';
+    } else if (sessionStatus?.isActive) {
+      return 'Live Now';
+    } else if (sessionStatus?.timingStatus === 'upcoming') {
+      return timeLeft ? `Starts in ${timeLeft}` : 'Upcoming';
+    } else if (sessionStatus?.timingStatus === 'past') {
+      return 'Past (Not Started)';
+    } else {
+      return 'Scheduled';
     }
   };
   
-  // Get status color
+  // Get color for status badge
   const getStatusColor = () => {
-    switch (sessionStatus) {
-      case 'live':
-        return 'green';
-      case 'teacher-ready':
-      case 'student-ready':
-        return 'yellow';
-      case 'upcoming':
-        return 'blue';
-      case 'ended':
-        return 'gray';
-      default:
-        return 'gray';
+    if (sessionStatus?.isCompleted) {
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+    } else if (sessionStatus?.isActive) {
+      return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+    } else if (sessionStatus?.timingStatus === 'upcoming') {
+      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+    } else if (sessionStatus?.timingStatus === 'past') {
+      return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+    } else {
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     }
   };
   
-  // Handle completing a session (for teachers)
+  // Handle completing a session
   const handleCompleteSession = async () => {
-    if (!isTeacher || sessionStatus !== 'live') return;
+    if (!isTeacher) return;
     
     try {
-      setLoading(true);
-      
-      // Call API to mark session as completed
       await sessionService.completeSession(id);
+      
+      // Update session data after completion
+      const updatedSession = await sessionService.getSessionById(id);
+      setSession(updatedSession);
+      
+      // Refresh status
+      await fetchSessionStatus();
       
       toast.success('Session marked as completed');
       
-      // Update session status
-      setSessionStatus('ended');
-      setIsActive(false);
-      
-      // End the Jitsi meeting if it's open
+      // If in a meeting, leave it
       if (showMeeting) {
-        if (sessionApiRef.current) {
-          sessionApiRef.current.executeCommand('hangup');
-        }
-        setShowMeeting(false);
+        handleMeetingLeft();
       }
-      
     } catch (error) {
       console.error('Error completing session:', error);
       toast.error('Failed to complete session');
-    } finally {
-      setLoading(false);
     }
   };
-
-  // Handle manual refresh of session status
+  
+  // Handle refreshing session status
   const handleRefreshStatus = () => {
-    updateSessionStatus();
-    toast.info('Session status updated');
+    fetchSessionStatus();
+    toast.info('Refreshing session status...');
   };
   
-  // Store the Jitsi API reference passed from the JitsiMeet component
+  // Handle Jitsi API reference
   const handleApiReference = (api) => {
     sessionApiRef.current = api;
   };
   
   if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    )
-  }
-  
-  if (!session) {
-    return (
-      <div className="text-center">
-        <p className="text-lg text-gray-600 dark:text-gray-400">
-          Session not found.
-        </p>
-        <Button to="/sessions" variant="primary" className="mt-4">
-          Back to Sessions
-        </Button>
-      </div>
-    )
+    return <div className="text-center py-20"><Spinner /></div>
   }
   
   return (
-    <div className="space-y-6">
-      {/* Navigation and actions bar */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <Button 
-            to="/sessions" 
-            variant="ghost" 
-            size="sm"
-            icon={<BiArrowBack className="h-5 w-5" />}
-          >
-            Back to Sessions
-          </Button>
-        </div>
-        
-        {isTeacher && (
-          <div className="flex items-center gap-2">
-            <Button 
-              to={`/sessions/${id}/edit`} 
-              variant="outline" 
-              icon={<BiEdit className="h-5 w-5" />}
-              disabled={sessionStatus === 'live' || sessionStatus === 'ended'}
-            >
-              Edit Session
+    <div className="container mx-auto py-6 max-w-7xl">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center">
+          <Link to="/sessions" className="mr-2">
+            <Button variant="outline" size="sm">
+              <BiArrowBack className="mr-1" /> Back
             </Button>
-            {!deleteConfirm ? (
-              <Button 
-                variant="danger" 
-                icon={<BiTrash className="h-5 w-5" />}
-                onClick={() => setDeleteConfirm(true)}
-                disabled={sessionStatus === 'live'}
-              >
-                Delete
-              </Button>
-            ) : (
-              <>
-                <Button 
-                  variant="danger" 
-                  onClick={handleDeleteSession}
-                >
-                  Confirm Delete
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  onClick={() => setDeleteConfirm(false)}
-                >
-                  Cancel
-                </Button>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-      
-      {/* Session header */}
-      <div className="rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white shadow-lg">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">{session.title}</h1>
-          
-          {sessionStatus && (
-            <span className={`inline-flex items-center rounded-full px-3 py-1.5 text-sm font-medium
-              ${getStatusColor() === 'green' ? 'bg-green-100 text-green-800' : 
-                getStatusColor() === 'yellow' ? 'bg-yellow-100 text-yellow-800' :
-                getStatusColor() === 'blue' ? 'bg-blue-100 text-blue-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
+          </Link>
+          <h1 className="text-2xl font-bold">
+            {session.title}
+            <span className={`ml-3 text-xs font-medium px-2.5 py-0.5 rounded ${getStatusColor()}`}>
               {getStatusLabel()}
             </span>
-          )}
+          </h1>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-white/80">
-          <span className="flex items-center gap-1">
-            <BiCalendar className="h-5 w-5" />
-            {formatDate(session.startTime)}
-          </span>
-          <span className="flex items-center gap-1">
-            <BiTime className="h-5 w-5" />
-            {formatDate(session.endTime)}
-          </span>
-          {session.course && (
-            <span className="flex items-center gap-1">
-              <BiBook className="h-5 w-5" />
-              {typeof session.course === 'object' ? session.course.title : session.course}
-            </span>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleRefreshStatus}
+            className="flex items-center"
+          >
+            <BiRefresh className="mr-1" /> Refresh
+          </Button>
+          
+          {isTeacher && !sessionStatus?.isCompleted && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center"
+              onClick={handleCompleteSession}
+            >
+              <BiCheck className="mr-1" /> Mark Complete
+            </Button>
+          )}
+          
+          {isTeacher && (
+            <Link to={`/sessions/edit/${id}`}>
+              <Button variant="outline" size="sm">
+                <BiEdit className="mr-1" /> Edit
+              </Button>
+            </Link>
+          )}
+          
+          {isTeacher && !deleteConfirm ? (
+            <Button 
+              variant="danger" 
+              size="sm" 
+              onClick={() => setDeleteConfirm(true)}
+            >
+              <BiTrash className="mr-1" /> Delete
+            </Button>
+          ) : isTeacher && (
+            <div className="flex gap-2">
+              <Button 
+                variant="danger" 
+                size="sm" 
+                onClick={handleDeleteSession}
+              >
+                Confirm
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setDeleteConfirm(false)}
+              >
+                Cancel
+              </Button>
+            </div>
           )}
         </div>
       </div>
-      
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Session details and video conference */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Video conference component */}
+    
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1 space-y-6">
           <Card>
-            <Card.Header className="flex items-center justify-between border-b border-gray-200 pb-4 dark:border-gray-700">
-              <div className="flex items-center space-x-2">
-                <BiVideo className="h-6 w-6 text-primary-500" />
-                <h2 className="text-xl font-semibold">Video Conference</h2>
-              </div>
+            <div className="p-6">
+              <h2 className="text-xl font-semibold mb-4">Session Information</h2>
               
-              {!showMeeting && (
-                <Button
-                  variant={isTeacher ? "primary" : (sessionStatus === 'live' ? "primary" : "secondary")}
-                  size="md"
-                  onClick={isTeacher ? handleStartSession : handleJoinSession}
-                  disabled={(isTeacher ? startingSession : joining) || 
-                            (sessionStatus === 'ended' || (sessionStatus === 'upcoming' && !isTeacher))}
-                  icon={isTeacher ? <BiPlay className="h-5 w-5 mr-2" /> : <BiVideo className="h-5 w-5 mr-2" />}
-                >
-                  {isTeacher && startingSession || !isTeacher && joining ? (
-                    <Spinner size="sm" className="mr-2" /> 
-                  ) : null}
-                  {getActionButtonText()}
-                </Button>
-              )}
-            </Card.Header>
-            
-            <Card.Body>
-              {showMeeting ? (
-                <JitsiMeet 
-                  roomName={`vclass-${session._id}`}
-                  displayName={user.name}
-                  email={user.email}
-                  isTeacher={isTeacher}
-                  onMeetingJoined={handleMeetingJoined}
-                  onMeetingLeft={handleMeetingLeft}
-                  onApiReady={handleApiReference}
-                />
-              ) : (
-                <div className="flex aspect-video w-full flex-col items-center justify-center rounded-lg bg-gray-100 p-8 text-center dark:bg-gray-800">
-                  <BiVideo className="mx-auto h-16 w-16 text-gray-400 dark:text-gray-600" />
-                  <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">
-                    {isTeacher ? 'Video Conference' : 'Join Video Conference'}
-                  </h3>
-                  
-                  {sessionStatus === 'live' && (
-                    <p className="mt-2 text-sm text-green-500 font-medium">
-                      {isTeacher 
-                        ? "You can start this session now" 
-                        : "Session is active and ready to join"}
-                    </p>
-                  )}
-                  
-                  {sessionStatus === 'teacher-ready' && (
-                    <p className="mt-2 text-sm text-amber-500">
-                      {isTeacher 
-                        ? "You can start the session early (15 minutes before scheduled time)" 
-                        : "The session will be available soon"}
-                    </p>
-                  )}
-                  
-                  {sessionStatus === 'student-ready' && (
-                    <p className="mt-2 text-sm text-amber-500">
-                      {isTeacher 
-                        ? "You can start the session now" 
-                        : "The session will begin shortly"}
-                    </p>
-                  )}
-                  
-                  {sessionStatus === 'upcoming' && (
-                    <p className="mt-2 text-sm text-blue-500">
-                      {isTeacher 
-                        ? `Session is scheduled to start in ${timeLeft}` 
-                        : `This session will be available in ${timeLeft}`}
-                    </p>
-                  )}
-                  
-                  {sessionStatus === 'ended' && (
-                    <p className="mt-2 text-sm text-gray-500">
-                      This session has ended
-                    </p>
-                  )}
+              <div className="space-y-4">
+                <div className="flex items-start">
+                  <BiBook className="text-primary-600 dark:text-primary-500 text-xl mr-2 mt-1" />
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Course</h3>
+                    <p>{session.course.title}</p>
+                  </div>
                 </div>
-              )}
-            </Card.Body>
-          </Card>
-          
-          {/* Description */}
-          {session.description && (
-            <Card>
-              <Card.Header className="border-b border-gray-200 pb-4 dark:border-gray-700">
-                <h2 className="text-xl font-semibold">Description</h2>
-              </Card.Header>
-              <Card.Body>
-                <p className="whitespace-pre-line">{session.description}</p>
-              </Card.Body>
-            </Card>
-          )}
-        </div>
-        
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Session Info */}
-          <Card>
-            <Card.Header className="border-b border-gray-200 pb-4 dark:border-gray-700">
-              <h2 className="text-xl font-semibold">Session Info</h2>
-            </Card.Header>
-            <Card.Body className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</h3>
-                <button 
-                  onClick={handleRefreshStatus} 
-                  className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-                  title="Refresh status"
-                >
-                  <BiRefresh className="h-5 w-5" />
-                </button>
-              </div>
-              <div className="mt-1">
-                {sessionStatus === 'live' ? (
-                  <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800 dark:bg-green-900 dark:text-green-200">
-                    Active
-                  </span>
-                ) : sessionStatus === 'ended' ? (
-                  <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-                    Completed
-                  </span>
-                ) : sessionStatus === 'teacher-ready' || sessionStatus === 'student-ready' ? (
-                  <span className="inline-flex items-center rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                    Starting Soon
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                    Upcoming
-                  </span>
+                
+                <div className="flex items-start">
+                  <BiCalendar className="text-primary-600 dark:text-primary-500 text-xl mr-2 mt-1" />
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Date</h3>
+                    <p>{new Date(session.startTime).toLocaleDateString()}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start">
+                  <BiTime className="text-primary-600 dark:text-primary-500 text-xl mr-2 mt-1" />
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Time</h3>
+                    <p>{new Date(session.startTime).toLocaleTimeString()} - {new Date(session.endTime).toLocaleTimeString()}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start">
+                  <BiUser className="text-primary-600 dark:text-primary-500 text-xl mr-2 mt-1" />
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Host</h3>
+                    <p>{session.isTeacher ? 'You' : 'Course Teacher'}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start">
+                  <BiVideo className="text-primary-600 dark:text-primary-500 text-xl mr-2 mt-1" />
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Video Provider</h3>
+                    <p>Jitsi Meet</p>
+                  </div>
+                </div>
+                
+                {session.description && (
+                  <div className="flex items-start">
+                    <BiListCheck className="text-primary-600 dark:text-primary-500 text-xl mr-2 mt-1" />
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">Description</h3>
+                      <p>{session.description}</p>
+                    </div>
+                  </div>
                 )}
               </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Date</h3>
-                <p className="mt-1 flex items-center text-sm text-gray-700 dark:text-gray-300">
-                  <BiCalendar className="mr-2 h-4 w-4 text-gray-500" />
-                  {new Date(session.startTime).toLocaleDateString()}
-                </p>
-              </div>
-              
-              <div>
-                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Time</h3>
-                <p className="mt-1 flex items-center text-sm text-gray-700 dark:text-gray-300">
-                  <BiTime className="mr-2 h-4 w-4 text-gray-500" />
-                  {new Date(session.startTime).toLocaleTimeString()} - {new Date(session.endTime).toLocaleTimeString()}
-                </p>
-              </div>
-              
-              {isTeacher && sessionStatus === 'live' && (
-                <div className="mt-4 space-y-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full" 
-                    icon={<BiListCheck className="h-5 w-5" />}
-                    to={`/attendance?sessionId=${id}`}
-                  >
-                    View Attendance
-                  </Button>
-                  
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    className="w-full" 
-                    icon={<BiCheck className="h-5 w-5" />}
-                    onClick={handleCompleteSession}
-                  >
-                    Complete Session
-                  </Button>
-                </div>
-              )}
-            </Card.Body>
+            </div>
           </Card>
           
-          {/* Teacher Information */}
-          {session.course && session.course.teacher && (
+          {!showMeeting && (
             <Card>
-              <Card.Header className="border-b border-gray-200 pb-4 dark:border-gray-700">
-                <h2 className="text-xl font-semibold">Instructor</h2>
-              </Card.Header>
-              <Card.Body>
-                <div className="flex items-center space-x-4">
-                  <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gray-200 dark:bg-gray-700">
-                    <BiUser className="h-10 w-10 text-gray-500 dark:text-gray-400" />
+              <div className="p-6">
+                <h2 className="text-xl font-semibold mb-4">Join Session</h2>
+                <Button 
+                  variant="primary" 
+                  className="w-full justify-center"
+                  disabled={
+                    (joining || startingSession) || 
+                    (!isTeacher && !sessionStatus?.canJoin) ||
+                    sessionStatus?.isCompleted
+                  }
+                  onClick={showMeeting ? handleMeetingLeft : handleJoinSession}
+                >
+                  {getActionButtonText()}
+                </Button>
+                
+                {!isTeacher && !sessionStatus?.canJoin && !sessionStatus?.isCompleted && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                    {timeLeft 
+                      ? `Session will be available in ${timeLeft}.` 
+                      : 'This session is not active yet. Please wait for the teacher to start it.'}
+                  </p>
+                )}
+              </div>
+            </Card>
+          )}
+          
+          {/* More session details could be added here */}
+        </div>
+        
+        <div className="lg:col-span-2">
+          {showMeeting ? (
+            <Card className="overflow-hidden h-full">
+              <div className="p-4 bg-primary-700 text-white flex justify-between items-center">
+                <h2 className="text-lg font-medium">Live Classroom</h2>
+                <Button 
+                  variant="danger" 
+                  size="sm"
+                  onClick={handleMeetingLeft}
+                >
+                  Leave Meeting
+                </Button>
+              </div>
+              
+              <div className="h-[600px] relative">
+                {liveClassData ? (
+                  <JitsiMeet
+                    roomName={session.meetingId || id}
+                    displayName={user?.name || 'User'}
+                    onApiReady={handleApiReference}
+                    onMeetingJoined={handleMeetingJoined}
+                    onMeetingLeft={handleMeetingLeft}
+                    onError={handleMeetingError}
+                    className="w-full h-full"
+                    domain="meet.jit.si"
+                    isHost={isTeacher}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <Spinner />
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {typeof session.course.teacher === 'object' 
-                        ? session.course.teacher.name 
-                        : 'Instructor'}
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {typeof session.course.teacher === 'object' && session.course.teacher.email 
-                        ? session.course.teacher.email 
-                        : ''}
-                    </p>
-                  </div>
+                )}
+              </div>
+            </Card>
+          ) : (
+            <Card>
+              <div className="p-6">
+                <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-8 text-center">
+                  <BiBookOpen className="text-6xl mx-auto mb-4 text-gray-400 dark:text-gray-600" />
+                  <h2 className="text-xl font-semibold mb-2">Ready to start the session?</h2>
+                  <p className="text-gray-600 dark:text-gray-400 mb-6">
+                    {isTeacher
+                      ? "Start the session to begin the virtual classroom experience."
+                      : "Join when the teacher starts the session."}
+                  </p>
+                  
+                  <Button 
+                    variant="primary" 
+                    size="lg"
+                    className="mx-auto"
+                    disabled={
+                      (joining || startingSession) || 
+                      (!isTeacher && !sessionStatus?.canJoin) ||
+                      sessionStatus?.isCompleted
+                    }
+                    onClick={handleJoinSession}
+                  >
+                    {isTeacher 
+                      ? (sessionStatus?.isActive ? 'Join Session' : 'Start Session') 
+                      : 'Join Session'}
+                  </Button>
                 </div>
-              </Card.Body>
+              </div>
             </Card>
           )}
         </div>

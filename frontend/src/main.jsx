@@ -1,17 +1,16 @@
 import React from 'react'
-import { createRoot } from 'react-dom/client'
+import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import './index.css'
 import App from './App.jsx'
+import './index.css'
 
-// Create root with React 18's new API
-const root = createRoot(document.getElementById('root'))
+// Add global window handling for Jitsi
+window.JitsiMeetExternalAPI = window.JitsiMeetExternalAPI || null;
 
-// Render the app
-root.render(
+ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
       <App />
     </BrowserRouter>
-  </React.StrictMode>
+  </React.StrictMode>,
 )

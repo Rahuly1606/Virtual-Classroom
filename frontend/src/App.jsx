@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { AuthProvider } from './context/AuthContext'
+import { LiveClassProvider } from './context/LiveClassContext'
 import useAuth from './hooks/useAuth'
 
 // Pages
@@ -16,8 +17,11 @@ import Sessions from './pages/sessions/Sessions'
 import Session from './pages/sessions/Session'
 import SessionDetail from './pages/sessions/SessionDetail'
 import SessionForm from './pages/sessions/SessionForm'
+import Attendance from './pages/attendance/Attendance'
+import AttendanceStats from './pages/attendance/AttendanceStats'
 import Profile from './pages/profile/Profile'
 import NotFound from './pages/NotFound'
+import LiveClass from './pages/sessions/LiveClass'
 
 // Components
 import Layout from './components/layout/Layout'
@@ -88,6 +92,9 @@ const AppRoutes = () => {
           <Route path="sessions/edit/:id" element={<SessionForm />} />
           <Route path="sessions/:id" element={<Session />} />
           <Route path="sessions/:id/detail" element={<SessionDetail />} />
+          <Route path="sessions/:id/live" element={<LiveClass />} />
+          <Route path="attendance" element={<Attendance />} />
+          <Route path="attendance/stats/:courseId" element={<AttendanceStats />} />
           <Route path="profile" element={<Profile />} />
           <Route path="*" element={<NotFound />} />
         </Route>
@@ -100,7 +107,9 @@ const AppRoutes = () => {
 function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <LiveClassProvider>
+        <AppRoutes />
+      </LiveClassProvider>
     </AuthProvider>
   )
 }

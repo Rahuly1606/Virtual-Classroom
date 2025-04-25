@@ -73,10 +73,25 @@ export const getCourses = async (req, res, next) => {
       .populate('teacher', 'name email profilePicture')
       .sort({ createdAt: -1 });
 
+    // Get enrollment counts for each course
+    const coursesWithEnrollment = await Promise.all(courses.map(async (course) => {
+      // Get enrollment count
+      const enrollmentCount = await Enrollment.countDocuments({ 
+        course: course._id, 
+        status: 'active' 
+      });
+
+      return {
+        ...course.toObject(),
+        enrollmentCount,
+        studentsCount: enrollmentCount
+      };
+    }));
+
     res.status(200).json({
       success: true,
       count: courses.length,
-      data: courses,
+      data: coursesWithEnrollment,
     });
   } catch (error) {
     next(error);
@@ -93,10 +108,25 @@ export const getTeacherCourses = async (req, res, next) => {
     const courses = await Course.find({ teacher: req.user._id })
       .sort({ createdAt: -1 });
 
+    // Get enrollment counts for each course
+    const coursesWithEnrollment = await Promise.all(courses.map(async (course) => {
+      // Get enrollment count
+      const enrollmentCount = await Enrollment.countDocuments({ 
+        course: course._id, 
+        status: 'active' 
+      });
+
+      return {
+        ...course.toObject(),
+        enrollmentCount,
+        studentsCount: enrollmentCount
+      };
+    }));
+
     res.status(200).json({
       success: true,
       count: courses.length,
-      data: courses,
+      data: coursesWithEnrollment,
     });
   } catch (error) {
     next(error);
@@ -104,27 +134,53 @@ export const getTeacherCourses = async (req, res, next) => {
 };
 
 /**
- * @desc    Get courses in which the logged-in student is enrolled
+ * @desc    Get enrolled courses for the student
  * @route   GET /api/courses/enrolled
  * @access  Private/Student
  */
 export const getEnrolledCourses = async (req, res, next) => {
   try {
-    // Find all enrollments for the student
-    const enrollments = await Enrollment.find({ student: req.user._id, status: 'active' });
+    const studentId = req.user._id;
 
-    // Extract course IDs from enrollments
-    const courseIds = enrollments.map(enrollment => enrollment.course);
+    // Find active enrollments for the student
+    const enrollments = await Enrollment.find({
+      student: studentId,
+      status: 'active',
+    }).populate({
+      path: 'course',
+      populate: {
+        path: 'teacher',
+        select: 'name email profilePicture',
+      },
+    });
 
-    // Find all courses with these IDs
-    const courses = await Course.find({ _id: { $in: courseIds } })
-      .populate('teacher', 'name email profilePicture')
-      .sort({ createdAt: -1 });
+    // Format the response
+    const enrolledCourses = await Promise.all(enrollments.map(async (enrollment) => {
+      if (!enrollment.course) return null;
+
+      // Get enrollment count for each course
+      const enrollmentCount = await Enrollment.countDocuments({ 
+        course: enrollment.course._id, 
+        status: 'active' 
+      });
+
+      return {
+        ...enrollment.course.toObject(),
+        enrollmentDate: enrollment.enrollmentDate,
+        enrollmentId: enrollment._id,
+        grade: enrollment.grade,
+        enrollmentCount,
+        studentsCount: enrollmentCount
+      };
+    }));
+
+    // Filter out any null values (in case a course was deleted)
+    const filteredCourses = enrolledCourses.filter(course => course !== null);
 
     res.status(200).json({
       success: true,
-      count: courses.length,
-      data: courses,
+      count: filteredCourses.length,
+      data: filteredCourses,
     });
   } catch (error) {
     next(error);

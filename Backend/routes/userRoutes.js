@@ -8,6 +8,12 @@ import {
   getUserById,
   getCurrentUser,
   changePassword,
+  sendVerificationOTP,
+  verifyEmail,
+  sendVerificationOTPPublic,
+  verifyEmailPublic,
+  sendPasswordResetOTP,
+  verifyOTPAndResetPassword
 } from '../controllers/userController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { userValidationRules, validateRequest } from '../middleware/validator.js';
@@ -51,6 +57,52 @@ const router = express.Router();
  *         description: Invalid input data
  */
 router.post('/register', userValidationRules.register, validateRequest, registerUser);
+
+/**
+ * @swagger
+ * /api/users/send-otp:
+ *   post:
+ *     summary: Send OTP for email verification
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: OTP sent successfully
+ *       401:
+ *         description: Not authorized
+ */
+router.post('/send-otp', protect, sendVerificationOTP);
+
+/**
+ * @swagger
+ * /api/users/verify-email:
+ *   post:
+ *     summary: Verify email with OTP
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - otp
+ *             properties:
+ *               otp:
+ *                 type: string
+ *                 description: The OTP received by email
+ *     responses:
+ *       200:
+ *         description: Email verified successfully
+ *       400:
+ *         description: Invalid or expired OTP
+ *       401:
+ *         description: Not authorized
+ */
+router.post('/verify-email', protect, verifyEmail);
 
 /**
  * @swagger
@@ -194,6 +246,66 @@ router.put(
 
 /**
  * @swagger
+ * /api/users/password-reset/send-otp:
+ *   post:
+ *     summary: Send OTP for password reset
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *     responses:
+ *       200:
+ *         description: OTP sent successfully
+ *       404:
+ *         description: User not found
+ */
+router.post('/password-reset/send-otp', sendPasswordResetOTP);
+
+/**
+ * @swagger
+ * /api/users/password-reset/verify:
+ *   post:
+ *     summary: Verify OTP and reset password
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - otp
+ *               - newPassword
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               otp:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Password reset successfully
+ *       400:
+ *         description: Invalid or expired OTP
+ *       404:
+ *         description: User not found
+ */
+router.post('/password-reset/verify', verifyOTPAndResetPassword);
+
+/**
+ * @swagger
  * /api/users:
  *   get:
  *     summary: Get all users (can filter by role)
@@ -235,5 +347,9 @@ router.get('/', protect, getUsers);
  *         description: User not found
  */
 router.get('/:id', protect, getUserById);
+
+// Public routes for email verification during registration
+router.post('/send-otp-public', sendVerificationOTPPublic);
+router.post('/verify-email-public', verifyEmailPublic);
 
 export default router; 

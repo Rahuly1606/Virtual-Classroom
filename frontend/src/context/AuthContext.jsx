@@ -9,11 +9,27 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [token, setToken] = useState(localStorage.getItem('token') || null)
   const [loading, setLoading] = useState(true)
+  const [otpVerificationState, setOtpVerificationState] = useState({
+    isVerifying: false,
+    otpSent: false,
+    emailVerified: false,
+    verificationEmail: ''
+  })
   const navigate = useNavigate()
+
+  // Clear emailVerified from localStorage on initialization if there's no token
+  // This ensures that email verification status doesn't persist between users
+  useEffect(() => {
+    if (!token) {
+      localStorage.removeItem('emailVerified')
+    }
+  }, [])
 
   // Create a memoized logout function to avoid dependency issues
   const logout = useCallback(() => {
     authService.logout()
+    localStorage.removeItem('token')
+    localStorage.removeItem('emailVerified')
     setToken(null)
     setUser(null)
     toast.info('You have been logged out')
@@ -28,6 +44,15 @@ export const AuthProvider = ({ children }) => {
       console.log('Fetching user profile with token:', token)
       const userData = await authService.getCurrentUser()
       console.log('Fetched user data:', userData)
+      
+      // If this user's email is verified, update the OTP verification state
+      if (userData.isEmailVerified) {
+        setOtpVerificationState(prev => ({
+          ...prev,
+          emailVerified: true
+        }))
+      }
+      
       return userData
     } catch (error) {
       console.error('Failed to fetch user profile:', error)
@@ -42,7 +67,16 @@ export const AuthProvider = ({ children }) => {
         if (token) {
           const userData = await fetchUserProfile()
           if (userData) {
+            console.log('Setting user data with isEmailVerified:', userData.isEmailVerified);
             setUser(userData)
+            
+            // If user's email is verified, update the OTP verification state
+            if (userData.isEmailVerified === true) {
+              setOtpVerificationState(prev => ({
+                ...prev,
+                emailVerified: true
+              }))
+            }
           } else {
             // If we couldn't get user data, we should logout
             logout()
@@ -84,7 +118,13 @@ export const AuthProvider = ({ children }) => {
       // Set user data if available, otherwise fetch it
       if (result.user) {
         console.log('Setting user from login response:', result.user)
+        console.log('Email verification status from login:', result.user.isEmailVerified)
+        
+        // Ensure isEmailVerified is explicitly set as a boolean
+        result.user.isEmailVerified = result.user.isEmailVerified === true
+        
         setUser(result.user)
+        
         toast.success('Successfully logged in!')
         
         // Navigate to dashboard
@@ -103,6 +143,7 @@ export const AuthProvider = ({ children }) => {
             if (userData) {
               console.log('User data fetched successfully:', userData)
               setUser(userData)
+              
               toast.success('Successfully logged in!')
               navigate('/dashboard', { replace: true })
             } else {
@@ -121,7 +162,18 @@ export const AuthProvider = ({ children }) => {
       return result
     } catch (error) {
       console.error('Login error:', error)
-      toast.error(error.message || 'Login failed')
+      
+      // Extract meaningful error message from the error object
+      let errorMessage = 'Login failed'
+      
+      if (error.message) {
+        errorMessage = error.message
+      } else if (error.response) {
+        errorMessage = error.response.data?.message || 'Server error during login'
+      }
+      
+      // Display user-friendly error message
+      toast.error(errorMessage)
       setLoading(false)
       throw error
     }
@@ -132,11 +184,28 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true)
       const data = await authService.register(userData)
-      toast.success('Registration successful! Please login.')
-      navigate('/login')
+      
+      // We don't set emailVerified here because we want the user to verify their email
+      // Only the server should determine if the email is verified
+      
+      toast.success('Registration successful!')
+      // Don't navigate away - let the component handle this
       return data
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Registration failed')
+      console.error('Registration error:', error)
+      
+      // Extract meaningful error message from the error object
+      let errorMessage = 'Registration failed'
+      
+      if (error.message) {
+        errorMessage = error.message
+      } else if (error.response) {
+        errorMessage = error.response.data?.message || 'Server error during registration'
+      }
+      
+      // Display user-friendly error message
+      toast.error(errorMessage)
+      setLoading(false)
       throw error
     } finally {
       setLoading(false)
@@ -177,6 +246,204 @@ export const AuthProvider = ({ children }) => {
     }
   }
 
+  // Send password reset OTP
+  const sendPasswordResetOTP = async (email) => {
+    try {
+      setLoading(true)
+      const result = await authService.sendPasswordResetOTP(email);
+      toast.success(`OTP sent to ${email}`);
+      return result;
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to send password reset OTP');
+      throw error;
+    } finally {
+      setLoading(false)
+    }
+  };
+
+  // Reset password with OTP
+  const resetPasswordWithOTP = async (email, otp, newPassword) => {
+    try {
+      setLoading(true)
+      const result = await authService.resetPasswordWithOTP(email, otp, newPassword);
+      toast.success('Password reset successfully!');
+      return result;
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to reset password');
+      throw error;
+    } finally {
+      setLoading(false)
+    }
+  };
+
+  // Send verification OTP (for authenticated users)
+  const sendVerificationOTP = async () => {
+    try {
+      // First set isVerifying to true
+      setOtpVerificationState(prev => ({ 
+        ...prev, 
+        isVerifying: true,
+        // Don't change other states yet
+      }));
+      
+      // Call the API
+      const result = await authService.sendVerificationOTP();
+      
+      // Only after successful API call, update otpSent state
+      if (result.success) {
+        setOtpVerificationState(prev => ({ 
+          ...prev, 
+          isVerifying: false,
+          otpSent: true 
+        }));
+        toast.success('OTP sent to your email');
+      }
+      
+      return result;
+    } catch (error) {
+      // In case of error, reset the isVerifying state
+      setOtpVerificationState(prev => ({ 
+        ...prev, 
+        isVerifying: false 
+      }));
+      toast.error(error.response?.data?.message || 'Failed to send OTP');
+      throw error;
+    }
+  };
+
+  // Send verification OTP (public - during registration)
+  const sendVerificationOTPPublic = async (email) => {
+    try {
+      // First set isVerifying to true and save the email
+      setOtpVerificationState(prev => ({ 
+        ...prev, 
+        isVerifying: true,
+        verificationEmail: email // Store the email for later use
+      }));
+      
+      // Call the API
+      const result = await authService.sendVerificationOTPPublic(email);
+      
+      // Only after successful API call, update otpSent state
+      if (result.success) {
+        setOtpVerificationState(prev => ({ 
+          ...prev, 
+          isVerifying: false,
+          otpSent: true
+        }));
+        toast.success('OTP sent to your email');
+      }
+      
+      return result;
+    } catch (error) {
+      // In case of error, reset the isVerifying state
+      setOtpVerificationState(prev => ({ 
+        ...prev, 
+        isVerifying: false 
+      }));
+      toast.error(error.response?.data?.message || 'Failed to send OTP');
+      throw error;
+    }
+  };
+
+  // Verify email with OTP (for authenticated users)
+  const verifyEmail = async (otp) => {
+    try {
+      // First set isVerifying to true
+      setOtpVerificationState(prev => ({ 
+        ...prev, 
+        isVerifying: true,
+        // Don't change other states yet
+      }));
+      
+      // Call the API
+      const result = await authService.verifyEmail(otp);
+      
+      if (result.success) {
+        // Update states after successful verification
+        setOtpVerificationState({
+          isVerifying: false,
+          otpSent: false,
+          emailVerified: false
+        });
+        
+        // Update user state to reflect verified email
+        setUser(prev => ({
+          ...prev,
+          isEmailVerified: true
+        }));
+        
+        toast.success('Email verified successfully');
+      }
+      
+      return result;
+    } catch (error) {
+      // In case of error, only reset the isVerifying state
+      setOtpVerificationState(prev => ({ 
+        ...prev, 
+        isVerifying: false 
+      }));
+      toast.error(error.response?.data?.message || 'Invalid or expired OTP');
+      throw error;
+    }
+  };
+
+  // Verify email with OTP (public - during registration)
+  const verifyEmailPublic = async (email, otp) => {
+    try {
+      // Get the email from state if not provided
+      const emailToVerify = email || otpVerificationState.verificationEmail;
+      
+      if (!emailToVerify) {
+        toast.error('Email address is missing');
+        throw new Error('Email address is missing');
+      }
+      
+      // First set isVerifying to true
+      setOtpVerificationState(prev => ({ 
+        ...prev, 
+        isVerifying: true
+      }));
+      
+      // Call the API
+      const result = await authService.verifyEmailPublic(emailToVerify, otp);
+      
+      if (result.success) {
+        // Update states after successful verification, but don't trust local verification for registration
+        setOtpVerificationState({
+          isVerifying: false,
+          otpSent: false,
+          emailVerified: false,
+          verificationEmail: emailToVerify
+        });
+        
+        toast.success('Email verified successfully');
+      }
+      
+      return result;
+    } catch (error) {
+      // In case of error, only reset the isVerifying state
+      setOtpVerificationState(prev => ({ 
+        ...prev, 
+        isVerifying: false 
+      }));
+      toast.error(error.response?.data?.message || 'Invalid or expired OTP');
+      throw error;
+    }
+  };
+
+  // Reset OTP verification state
+  const resetOtpVerification = () => {
+    // Don't rely on localStorage for email verification status
+    // Only rely on the user's actual verified status
+    setOtpVerificationState({
+      isVerifying: false,
+      otpSent: false,
+      emailVerified: user?.isEmailVerified || false,
+      verificationEmail: ''
+    })
+  }
+
   const contextValue = {
     user,
     token,
@@ -186,9 +453,18 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateProfile,
     changePassword,
+    sendVerificationOTP,
+    verifyEmail,
+    sendVerificationOTPPublic,
+    verifyEmailPublic,
+    resetOtpVerification,
+    sendPasswordResetOTP,
+    resetPasswordWithOTP,
+    otpVerificationState,
     isAuthenticated: !!token,
     isTeacher: user?.role === 'teacher',
     isStudent: user?.role === 'student',
+    isEmailVerified: user?.isEmailVerified || false,
   }
 
   return (

@@ -9,7 +9,10 @@ import {
   completeSession,
   getAllSessions,
   getPastSessions,
-  joinSession
+  joinSession,
+  startSession,
+  endSession,
+  getSessionStatus
 } from '../controllers/sessionController.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { sessionValidationRules, validateRequest } from '../middleware/validator.js';
@@ -262,9 +265,9 @@ router.put('/:id/complete', protect, authorize('teacher'), completeSession);
 
 /**
  * @swagger
- * /api/sessions/{id}/join:
+ * /api/sessions/{id}/start:
  *   post:
- *     summary: Join a session
+ *     summary: Start a live session (teacher only)
  *     tags: [Sessions]
  *     security:
  *       - bearerAuth: []
@@ -276,7 +279,87 @@ router.put('/:id/complete', protect, authorize('teacher'), completeSession);
  *           type: string
  *     responses:
  *       200:
- *         description: Session join URL
+ *         description: Session started successfully with auth token
+ *       404:
+ *         description: Session not found
+ *       403:
+ *         description: Not authorized to start this session
+ */
+router.post('/:id/start', protect, authorize('teacher'), startSession);
+
+/**
+ * @swagger
+ * /api/sessions/{id}/end:
+ *   post:
+ *     summary: End a live session (teacher only)
+ *     tags: [Sessions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               recordingUrl:
+ *                 type: string
+ *               isCompleted:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Session ended successfully
+ *       404:
+ *         description: Session not found
+ *       403:
+ *         description: Not authorized to end this session
+ */
+router.post('/:id/end', protect, authorize('teacher'), endSession);
+
+/**
+ * @swagger
+ * /api/sessions/{id}/status:
+ *   get:
+ *     summary: Get the current status of a session
+ *     tags: [Sessions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Session status details
+ *       404:
+ *         description: Session not found
+ */
+router.get('/:id/status', protect, getSessionStatus);
+
+/**
+ * @swagger
+ * /api/sessions/{id}/join:
+ *   post:
+ *     summary: Join a live session
+ *     tags: [Sessions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Session join details with auth token
  *       404:
  *         description: Session not found
  *       403:

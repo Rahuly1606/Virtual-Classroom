@@ -69,8 +69,8 @@ const Session = () => {
     try {
       setJoining(true)
       
-      // Navigate to the session detail page where the Jitsi component is embedded
-      navigate(`/sessions/${session._id}/detail`)
+      // Navigate to the live class page
+      navigate(`/sessions/${session._id}/live`)
       
     } catch (error) {
       console.error('Error joining session:', error)
@@ -237,7 +237,7 @@ const Session = () => {
                       disabled={joining}
                     >
                       {joining ? <Spinner size="sm" className="mr-2" /> : null}
-                      Join Session Now
+                      {isTeacher ? 'Start Live Class' : 'Join Class'}
                     </Button>
                   </div>
                 ) : (

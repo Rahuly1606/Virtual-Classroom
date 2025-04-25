@@ -48,7 +48,22 @@ JITSI_API_KEY=your_jitsi_api_key
 CLOUDINARY_CLOUD_NAME=your_cloudinary_name
 CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+
+# Email Configuration
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_SECURE=false
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASS=your-app-password
+EMAIL_FROM=Virtual Classroom <your-email@gmail.com>
 ```
+
+For Gmail, you'll need to use an app password. Instructions for creating an app password:
+1. Go to your Google Account settings
+2. Navigate to Security
+3. Set up 2-Step Verification if not already enabled
+4. Create an App Password
+5. Use this password in your .env file
 
 ### Running the Server
 
@@ -121,6 +136,11 @@ http://localhost:5000/api-docs
 - `POST /api/assignments/:id/submit` - Submit an assignment
 - `GET /api/assignments/:id/submissions` - Get all submissions for an assignment
 - `PUT /api/submissions/:id/grade` - Grade a submission
+
+### Email Verification
+
+- `POST /api/users/send-otp` - Send OTP to user's email address
+- `POST /api/users/verify-email` - Verify email with OTP
 
 ## Postman Collection
 

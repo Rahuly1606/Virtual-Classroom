@@ -8,7 +8,7 @@ import crypto from 'crypto';
  */
 
 // Configuration for Jitsi Meet
-const JITSI_CONFIG = {
+export const JITSI_CONFIG = {
   domain: process.env.JITSI_DOMAIN || 'meet.jit.si',
   appId: process.env.JITSI_APP_ID || '',
   apiKey: process.env.JITSI_API_KEY || '',
@@ -105,4 +105,46 @@ export const createVideoSession = (user, course, sessionTitle) => {
     jwtToken,
     meetingId: roomName,
   };
+};
+
+/**
+ * Generate Jitsi data for a user joining a session
+ * @param {Object} user - User joining the session
+ * @param {Object} session - Session being joined
+ * @return {Object} - Contains videoLink, hostVideoLink and jwt token if available
+ */
+export const generateJitsiData = (user, session) => {
+  try {
+    // Always ensure we have a roomName, use the existing meetingId or generate a new one
+    const roomName = session.meetingId || generateRoomName(session.title?.substring(0, 10).replace(/\s+/g, '') || 'class');
+
+    // Generate video links
+    const videoLink = generateVideoLink(roomName);
+    const jwtToken = JITSI_CONFIG.apiKey ? generateJitsiToken(user, roomName) : null;
+
+    // Build response
+    const response = {
+      roomName,
+      videoLink,
+      meetingId: roomName,
+      jwtToken
+    };
+
+    // Generate host link for teachers
+    if (user.role === 'teacher') {
+      response.hostVideoLink = videoLink;
+    }
+
+    return response;
+  } catch (error) {
+    console.error('Error generating Jitsi data:', error);
+    
+    // Fallback to ensure we always return a videoLink
+    const fallbackRoom = 'fallback_' + Math.random().toString(36).substring(2, 9);
+    return {
+      roomName: fallbackRoom,
+      videoLink: `https://${JITSI_CONFIG.domain}/${fallbackRoom}`,
+      meetingId: fallbackRoom
+    };
+  }
 }; 

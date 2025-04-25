@@ -1,8 +1,11 @@
+// Load environment variables first
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import path from 'path';
@@ -15,12 +18,12 @@ import sessionRoutes from './routes/sessionRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import assignmentRoutes from './routes/assignmentRoutes.js';
 
-// Load environment variables
-dotenv.config();
-
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Default MongoDB URI if environment variable is not set
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/virtual-classroom';
 
 // Swagger documentation setup
 const swaggerOptions = {
@@ -76,7 +79,7 @@ app.get('/', (req, res) => {
 
 // Connect to MongoDB
 mongoose
-  .connect(process.env.MONGODB_URI)
+  .connect(MONGODB_URI)
   .then(() => {
     console.log('Connected to MongoDB');
     // Start server after successful database connection
@@ -91,12 +94,23 @@ mongoose
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
+  console.error('Error:', err);
+  
+  const statusCode = err.statusCode || 500;
+  
+  // Create a detailed error response
+  const errorResponse = {
     success: false,
-    message: 'Something went wrong!',
+    message: err.message || 'Something went wrong!',
     error: process.env.NODE_ENV === 'development' ? err.message : undefined,
-  });
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  };
+  
+  // Log detailed error information
+  console.error(`[${req.method}] ${req.path} - Status: ${statusCode}`);
+  console.error('Error details:', errorResponse);
+  
+  res.status(statusCode).json(errorResponse);
 });
 
 export default app; 

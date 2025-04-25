@@ -2,7 +2,9 @@ import Session from '../models/Session.js';
 import Course from '../models/Course.js';
 import Enrollment from '../models/Enrollment.js';
 import { ApiError } from '../middleware/errorHandler.js';
-import { createVideoSession } from '../utils/jitsiIntegration.js';
+import * as jitsiIntegration from '../utils/jitsiIntegration.js';
+import * as attendanceTracker from '../utils/attendanceTracker.js';
+import Attendance from '../models/Attendance.js';
 
 /**
  * @desc    Create a new session
@@ -24,8 +26,12 @@ export const createSession = async (req, res, next) => {
       throw new ApiError('Not authorized to create sessions for this course', 403);
     }
 
-    // Generate video conferencing data using Jitsi
-    const videoSessionData = createVideoSession(req.user, courseDoc, title);
+    let videoSessionData = {};
+
+    // Generate video conferencing data based on provider
+    if (videoProvider === 'jitsi' || videoProvider === 'other') {
+      videoSessionData = jitsiIntegration.createVideoSession(req.user, courseDoc, title);
+    }
 
     // Create the session
     const session = await Session.create({
@@ -34,10 +40,10 @@ export const createSession = async (req, res, next) => {
       description,
       startTime,
       endTime,
-      videoLink: videoSessionData.videoLink,
-      hostVideoLink: videoSessionData.videoLink, // Jitsi doesn't have separate host links
-      meetingId: videoSessionData.meetingId,
-      videoProvider: 'jitsi',
+      videoLink: videoSessionData.videoLink || '',
+      hostVideoLink: videoSessionData.hostVideoLink || '',
+      meetingId: videoSessionData.meetingId || '',
+      videoProvider,
     });
 
     res.status(201).json({
@@ -253,37 +259,50 @@ export const updateSession = async (req, res, next) => {
       try {
         console.log('Updating session video data due to title change');
         
+        // Create a safe course object to pass to the video session creator
+        const courseData = {
+          _id: session.course._id,
+          title: session.course.title || 'Course',
+          code: session.course.code || ''
+        };
+        
         // Create a new Jitsi room with updated title
-        const jitsiIntegration = await import('../utils/jitsiIntegration.js');
         const newVideoData = jitsiIntegration.createVideoSession(
           req.user, 
-          session.course,
+          courseData,
           req.body.title
         );
         
-        updatedVideoData = {
-          videoLink: newVideoData.videoLink,
-          hostVideoLink: newVideoData.videoLink,
-          meetingId: newVideoData.meetingId,
-          videoProvider: 'jitsi'
-        };
-        
-        console.log(`Created new Jitsi room for updated session: ${newVideoData.meetingId}`);
+        if (newVideoData && newVideoData.videoLink) {
+          updatedVideoData = {
+            videoLink: newVideoData.videoLink,
+            hostVideoLink: newVideoData.hostVideoLink,
+            meetingId: newVideoData.meetingId || '',
+            videoProvider: 'jitsi'
+          };
+          
+          console.log(`Created new Jitsi room for updated session: ${newVideoData.meetingId}`);
+        } else {
+          console.warn('Video data creation returned incomplete data');
+        }
       } catch (error) {
         console.error('Error updating video session:', error);
         // Continue without updating video data if it fails
       }
     }
 
-    // Update session with all changes, including any new video data
+    // Prepare data for update
+    const updateData = { ...req.body };
+    
+    // Only include video data if it was successfully generated
+    if (updatedVideoData.videoLink) {
+      Object.assign(updateData, updatedVideoData);
+    }
+
+    // Update session with all changes
     const updatedSession = await Session.findByIdAndUpdate(
       req.params.id,
-      { 
-        $set: {
-          ...req.body,
-          ...updatedVideoData
-        } 
-      },
+      { $set: updateData },
       { new: true, runValidators: true }
     );
 
@@ -292,6 +311,7 @@ export const updateSession = async (req, res, next) => {
       data: updatedSession,
     });
   } catch (error) {
+    console.error('Session update error:', error);
     next(error);
   }
 };
@@ -465,109 +485,270 @@ export const getPastSessions = async (req, res, next) => {
 };
 
 /**
- * @desc    Join a session (get access URL)
+ * @desc    Start a live session
+ * @route   POST /api/sessions/:id/start
+ * @access  Private/Teacher
+ */
+export const startSession = async (req, res, next) => {
+  try {
+    const session = await Session.findById(req.params.id)
+      .populate('course', 'teacher title');
+
+    if (!session) {
+      throw new ApiError('Session not found', 404);
+    }
+
+    // Check if the user is the teacher of the course
+    if (session.course.teacher.toString() !== req.user._id.toString()) {
+      throw new ApiError('Not authorized to start this session', 403);
+    }
+
+    // Generate tokens and video data
+    let tokenData = {};
+
+    // Generate tokens based on video provider
+    if (session.videoProvider === 'jitsi' || session.videoProvider === 'other') {
+      tokenData = jitsiIntegration.generateJitsiData(req.user, session);
+      
+      // Log the token data for debugging
+      console.log('Generated Jitsi data:', JSON.stringify(tokenData));
+    }
+
+    // Check if session is already active
+    if (session.isActive) {
+      return res.status(200).json({
+        success: true,
+        message: 'Session is already active',
+        data: {
+          sessionId: session._id,
+          videoLink: tokenData.videoLink || session.hostVideoLink || session.videoLink,
+          videoProvider: session.videoProvider,
+          meetingId: tokenData.meetingId || session.meetingId
+        },
+      });
+    }
+
+    // If the session didn't have video information, update it with the new data
+    let updated = false;
+    if (tokenData.videoLink && (!session.videoLink || !session.meetingId)) {
+      session.videoLink = tokenData.videoLink;
+      session.hostVideoLink = tokenData.hostVideoLink || tokenData.videoLink;
+      session.meetingId = tokenData.meetingId || session.meetingId;
+      updated = true;
+    }
+
+    // Update session to active
+    session.isActive = true;
+    session.activatedAt = new Date();
+    await session.save();
+
+    // Ensure we have a videoLink to return
+    const responseVideoLink = tokenData.videoLink || session.hostVideoLink || session.videoLink;
+    
+    if (!responseVideoLink) {
+      console.error('No videoLink found for session:', session._id);
+      
+      // Generate a fallback link if none exists
+      const fallbackRoom = `classroom_${session._id.toString().substring(0, 8)}`;
+      const fallbackLink = `https://${jitsiIntegration.JITSI_CONFIG.domain}/${fallbackRoom}`;
+      
+      // Return the fallback link
+      return res.status(200).json({
+        success: true,
+        message: 'Session started with fallback link',
+        data: {
+          sessionId: session._id,
+          videoLink: fallbackLink,
+          videoProvider: session.videoProvider,
+          meetingId: fallbackRoom
+        },
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Session started successfully',
+      data: {
+        sessionId: session._id,
+        videoLink: responseVideoLink,
+        videoProvider: session.videoProvider,
+        meetingId: tokenData.meetingId || session.meetingId
+      },
+    });
+  } catch (error) {
+    console.error('Error starting session:', error);
+    next(error);
+  }
+};
+
+/**
+ * @desc    Join a live session
  * @route   POST /api/sessions/:id/join
  * @access  Private
  */
 export const joinSession = async (req, res, next) => {
   try {
     const session = await Session.findById(req.params.id)
-      .populate('course', 'title teacher');
+      .populate('course', 'teacher title');
 
     if (!session) {
       throw new ApiError('Session not found', 404);
     }
 
     // Check if user has access to this session
-    const course = await Course.findById(session.course._id);
-
-    // Teachers can access if they own the course
     const isTeacher = req.user.role === 'teacher' && 
-      course.teacher.toString() === req.user._id.toString();
+      session.course.teacher.toString() === req.user._id.toString();
 
-    // Students can access if they are enrolled
-    let isStudent = false;
+    // Students can only join if they are enrolled
     if (req.user.role === 'student') {
       const isEnrolled = await Enrollment.exists({
         course: session.course._id,
         student: req.user._id,
         status: 'active',
       });
-      isStudent = !!isEnrolled;
-    }
 
-    if (!isTeacher && !isStudent) {
-      throw new ApiError('Not authorized to join this session', 403);
-    }
-    
-    // Check if the session is active or upcoming (within 10 minutes)
-    const now = new Date();
-    const startTime = new Date(session.startTime);
-    const endTime = new Date(session.endTime);
-    const joinBuffer = new Date(startTime);
-    joinBuffer.setMinutes(joinBuffer.getMinutes() - 10);
-    
-    if (now < joinBuffer) {
-      throw new ApiError('This session is not available to join yet. You can join 10 minutes before the start time.', 400);
-    }
-    
-    if (now > endTime) {
-      throw new ApiError('This session has already ended.', 400);
-    }
-
-    // Return the appropriate video link based on user role
-    // Teachers get the host link, students get the regular link
-    const videoLink = isTeacher && session.hostVideoLink ? session.hostVideoLink : session.videoLink;
-    
-    // If no video link is available, handle the error gracefully
-    if (!videoLink) {
-      console.error(`No video link available for session ${session._id}`);
-      throw new ApiError('Video conference link is not available for this session', 500);
-    }
-
-    // Create attendance record for the student
-    if (isStudent) {
-      try {
-        const Attendance = (await import('../models/Attendance.js')).default;
-        await Attendance.findOneAndUpdate(
-          { 
-            session: session._id,
-            student: req.user._id 
-          },
-          { 
-            $setOnInsert: { 
-              session: session._id,
-              student: req.user._id,
-              joinTime: new Date()
-            }
-          },
-          { 
-            upsert: true, 
-            new: true 
-          }
-        );
-        console.log(`Attendance recorded for student ${req.user._id} in session ${session._id}`);
-      } catch (error) {
-        console.error('Error recording attendance:', error);
-        // Continue anyway to let the student join
+      if (!isEnrolled) {
+        throw new ApiError('You are not enrolled in this course', 403);
       }
     }
 
+    // Record attendance for students
+    if (req.user.role === 'student') {
+      await attendanceTracker.recordAttendanceOnJoin(session._id, req.user._id);
+    }
+
+    // Prepare the response object with live class data
+    const liveClassData = {
+      id: session._id,
+      title: session.title,
+      course: session.course.title,
+    };
+
+    // Generate tokens and video data based on role and provider
+    let tokenData = {};
+
+    // Generate tokens based on video provider
+    if (session.videoProvider === 'jitsi' || session.videoProvider === 'other') {
+      tokenData = jitsiIntegration.generateJitsiData(req.user, session);
+      console.log('Generated Jitsi data for join:', JSON.stringify(tokenData));
+    }
+
+    // Determine the video link to return
+    let videoLink = isTeacher ? 
+      (session.hostVideoLink || tokenData.videoLink || session.videoLink) :
+      (session.videoLink || tokenData.videoLink);
+    
+    // If still no video link, generate a fallback
+    if (!videoLink) {
+      console.warn('No video link found for session:', session._id);
+      
+      // Use meetingId if available, or generate a new one
+      const roomName = session.meetingId || `classroom_${session._id.toString().substring(0, 8)}`;
+      videoLink = `https://${jitsiIntegration.JITSI_CONFIG.domain}/${roomName}`;
+      
+      console.log('Generated fallback video link:', videoLink);
+    }
+
+    // Return appropriate data
     res.status(200).json({
       success: true,
       data: {
-        videoLink,
-        isTeacher,
         sessionId: session._id,
-        title: session.title,
-        startTime: session.startTime,
-        endTime: session.endTime
+        liveClassData,
+        videoLink,
+        videoProvider: session.videoProvider,
+        meetingId: tokenData.meetingId || session.meetingId
       },
+    });
+  } catch (error) {
+    console.error('Error joining session:', error);
+    next(error);
+  }
+};
+
+/**
+ * @desc    End a session (teacher only)
+ * @route   POST /api/sessions/:id/end
+ * @access  Private/Teacher
+ */
+export const endSession = async (req, res, next) => {
+  try {
+    // Find session
+    const session = await Session.findById(req.params.id).populate('course');
+    
+    if (!session) {
+      throw new ApiError('Session not found', 404);
+    }
+    
+    // Check if the user is the teacher of the course
+    if (session.course.teacher.toString() !== req.user._id.toString()) {
+      throw new ApiError('Not authorized to end this session', 403);
+    }
+    
+    // Update session status
+    session.isActive = false;
+    
+    // If recording URL is provided, save it
+    if (req.body.recordingUrl) {
+      session.recordingUrl = req.body.recordingUrl;
+    }
+    
+    // If marked as completed, update that too
+    if (req.body.isCompleted) {
+      session.isCompleted = true;
+    }
+    
+    // Close all open attendance records
+    const updatedCount = await attendanceTracker.closeAllAttendanceRecords(session._id);
+    console.log(`Closed ${updatedCount} attendance records for session ${session._id}`);
+    
+    await session.save();
+    
+    res.status(200).json({
+      success: true,
+      data: session
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Import these models for the specific methods that use them
-import Attendance from '../models/Attendance.js'; 
+/**
+ * @desc    Get session status
+ * @route   GET /api/sessions/:id/status
+ * @access  Private
+ */
+export const getSessionStatus = async (req, res, next) => {
+  try {
+    const session = await Session.findById(req.params.id).select('isActive activatedAt startTime endTime isCompleted');
+    
+    if (!session) {
+      throw new ApiError('Session not found', 404);
+    }
+    
+    const now = new Date();
+    const startTime = new Date(session.startTime);
+    const endTime = new Date(session.endTime);
+    
+    // Determine timing status
+    let timingStatus = 'upcoming';
+    if (now > endTime) {
+      timingStatus = 'ended';
+    } else if (now >= startTime) {
+      timingStatus = 'ongoing';
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        isActive: session.isActive,
+        isCompleted: session.isCompleted,
+        activatedAt: session.activatedAt,
+        timingStatus,
+        canJoin: session.isActive && !session.isCompleted,
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+}; 
