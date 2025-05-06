@@ -23,6 +23,13 @@ import Profile from './pages/profile/Profile'
 import NotFound from './pages/NotFound'
 import LiveClass from './pages/sessions/LiveClass'
 
+// Assignment Pages
+import AssignmentList from './pages/assignments/AssignmentList'
+import AssignmentDetail from './pages/assignments/AssignmentDetail'
+import CreateAssignment from './pages/assignments/CreateAssignment'
+import EditAssignment from './pages/assignments/EditAssignment'
+import SubmissionList from './pages/assignments/SubmissionList'
+
 // Components
 import Layout from './components/layout/Layout'
 import Spinner from './components/ui/Spinner'
@@ -96,6 +103,14 @@ const AppRoutes = () => {
           <Route path="attendance" element={<Attendance />} />
           <Route path="attendance/stats/:courseId" element={<AttendanceStats />} />
           <Route path="profile" element={<Profile />} />
+          
+          {/* Assignment Routes */}
+          <Route path="assignments" element={<AssignmentList />} />
+          <Route path="assignments/new" element={<CreateAssignment />} />
+          <Route path="assignments/:assignmentId" element={<AssignmentDetail />} />
+          <Route path="assignments/:assignmentId/edit" element={<EditAssignment />} />
+          <Route path="assignments/:assignmentId/submissions" element={<SubmissionList />} />
+          
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

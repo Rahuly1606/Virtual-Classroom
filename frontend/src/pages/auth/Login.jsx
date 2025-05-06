@@ -55,7 +55,8 @@ const Login = () => {
         const result = await login(formData)
         console.log('Login successful:', result)
         
-        // Login function will handle redirect to dashboard
+        // We'll manually navigate in the Login component rather than relying on login function
+        window.location.href = '/dashboard' // Use window.location for a full refresh to ensure context is updated
       } catch (error) {
         console.error('Login submission error:', error)
         

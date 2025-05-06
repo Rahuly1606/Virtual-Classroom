@@ -648,7 +648,7 @@ const CourseDetail = () => {
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Assignments</h2>
               {isTeacher && (
                 <Button
-                  to={`/assignments/create?courseId=${id}`}
+                  to={`/assignments/new?courseId=${id}`}
                   variant="primary"
                   icon={<BiPlus className="h-5 w-5" />}
                 >
@@ -707,7 +707,7 @@ const CourseDetail = () => {
                 </p>
                 {isTeacher && (
                   <Button
-                    to={`/assignments/create?courseId=${id}`}
+                    to={`/assignments/new?courseId=${id}`}
                     variant="primary"
                     className="mt-4"
                   >

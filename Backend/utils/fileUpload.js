@@ -1,31 +1,17 @@
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { ApiError } from '../middleware/errorHandler.js';
+import cloudinary from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import dotenv from 'dotenv';
 
-// Check if uploads directory exists, if not create it
-const uploadsDir = path.join(process.cwd(), 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
+dotenv.config();
 
-// Define storage for local storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const folderPath = path.join(uploadsDir, req.uploadPath || '');
-    
-    // Create folder if it doesn't exist
-    if (!fs.existsSync(folderPath)) {
-      fs.mkdirSync(folderPath, { recursive: true });
-    }
-    
-    cb(null, folderPath);
-  },
-  filename: (req, file, cb) => {
-    const uniqueFileName = `${uuidv4()}-${file.originalname.replace(/\s+/g, '-')}`;
-    cb(null, uniqueFileName);
-  },
+// Configure Cloudinary
+cloudinary.v2.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 // File filter to check file types
@@ -50,7 +36,22 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Set up multer with storage and file filter
+// Set up storage using CloudinaryStorage
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary.v2,
+  params: (req, file) => {
+    const folder = `virtual-classroom/${req.uploadPath || 'misc'}`;
+    const uniqueFilename = `${uuidv4()}-${file.originalname.replace(/\s+/g, '-')}`;
+    
+    return {
+      folder,
+      public_id: uniqueFilename.substring(0, uniqueFilename.lastIndexOf('.')) || uniqueFilename,
+      resource_type: 'auto'
+    };
+  }
+});
+
+// Set up multer with Cloudinary storage and file filter
 const upload = multer({
   storage,
   fileFilter,

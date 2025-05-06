@@ -171,4 +171,37 @@ A Postman collection is included in the project for testing the API endpoints. I
 - **Bcrypt**: Password hashing
 - **Multer**: File upload handling
 - **Jitsi Meet**: Video conferencing
-- **Swagger**: API documentation 
+- **Swagger**: API documentation
+
+## Assignment and Submission Management
+
+The platform includes a full-featured assignment management system:
+
+### For Teachers:
+- Create assignments with detailed descriptions, file attachments, and deadlines
+- Assign to specific courses
+- View student submissions
+- Grade and provide feedback on submissions
+
+### For Students:
+- View all assignments for enrolled courses
+- Submit responses with file uploads
+- Track submission status and grades
+
+### File Upload with Cloudinary
+
+The system uses Cloudinary for file storage:
+
+1. Create a Cloudinary account at https://cloudinary.com/
+2. Get your cloud name, API key, and API secret
+3. Add these to your `.env` file:
+```
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+```
+
+### Supported File Types
+- Documents: PDF, Word, Excel, PowerPoint, Text
+- Images: JPEG, PNG
+- Other formats can be added by modifying the `fileFilter` in `utils/fileUpload.js` 

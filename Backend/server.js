@@ -17,6 +17,7 @@ import courseRoutes from './routes/courseRoutes.js';
 import sessionRoutes from './routes/sessionRoutes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import assignmentRoutes from './routes/assignmentRoutes.js';
+import submissionRoutes from './routes/submissionRoutes.js';
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -68,6 +69,7 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/assignments', assignmentRoutes);
+app.use('/api/submissions', submissionRoutes);
 
 // Swagger docs route
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));

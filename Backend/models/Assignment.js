@@ -41,38 +41,83 @@ import mongoose from 'mongoose';
  *           format: date-time
  *           description: Date when the assignment was last updated
  */
-const AssignmentSchema = new mongoose.Schema(
-  {
-    title: {
-      type: String,
-      required: [true, 'Assignment title is required'],
-      trim: true,
-    },
-    description: {
-      type: String,
-      default: '',
-    },
-    course: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Course',
-      required: true,
-    },
-    dueDate: {
-      type: Date,
-      required: [true, 'Due date is required'],
-    },
-    totalPoints: {
-      type: Number,
-      default: 100,
-      min: [0, 'Total points cannot be negative'],
-    },
-    attachments: [{
-      type: String,
-    }],
+
+const fileSchema = new mongoose.Schema({
+  originalName: {
+    type: String,
+    required: true
   },
-  { timestamps: true }
-);
+  fileName: {
+    type: String,
+    required: true
+  },
+  mimeType: {
+    type: String,
+    required: true
+  },
+  url: {
+    type: String,
+    required: true
+  },
+  size: {
+    type: Number
+  },
+  cloudinaryId: {
+    type: String,
+    required: true
+  }
+}, { _id: false });
 
-const Assignment = mongoose.model('Assignment', AssignmentSchema);
+const AssignmentSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: [true, 'Please add a title'],
+    trim: true,
+    maxlength: [100, 'Title cannot be more than 100 characters']
+  },
+  description: {
+    type: String,
+    required: [true, 'Please add a description']
+  },
+  course: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course',
+    required: [true, 'Please select a course']
+  },
+  teacher: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'Teacher ID is required']
+  },
+  deadline: {
+    type: Date,
+    required: [true, 'Please add a deadline']
+  },
+  totalPoints: {
+    type: Number,
+    default: 100
+  },
+  files: [fileSchema],
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
 
-export default Assignment; 
+// Virtual field for submissions
+AssignmentSchema.virtual('submissions', {
+  ref: 'Submission',
+  localField: '_id',
+  foreignField: 'assignment',
+  justOne: false
+});
+
+export default mongoose.model('Assignment', AssignmentSchema); 

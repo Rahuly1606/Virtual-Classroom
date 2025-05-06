@@ -5,16 +5,15 @@ import {
   getAssignmentById,
   updateAssignment,
   deleteAssignment,
+  getStudentAssignments,
+  getTeacherAssignments,
   submitAssignment,
   getAssignmentSubmissions,
   gradeSubmission,
-  getStudentAssignments,
-  getTeacherAssignments,
+  deleteAssignmentFile
 } from '../controllers/assignmentController.js';
-import { protect, authorize } from '../middleware/auth.js';
-import { assignmentValidationRules, submissionValidationRules, validateRequest } from '../middleware/validator.js';
-import upload from '../utils/fileUpload.js';
-import { setUploadPath, setAllowedFileTypes } from '../utils/fileUpload.js';
+import { protect, authorize } from '../middleware/authMiddleware.js';
+import upload, { setUploadPath } from '../utils/fileUpload.js';
 
 const router = express.Router();
 
@@ -98,9 +97,7 @@ router.post(
   protect,
   authorize('teacher'),
   setUploadPath('assignments'),
-  upload.array('attachments', 5), // Allow up to 5 attachments
-  assignmentValidationRules.create,
-  validateRequest,
+  upload.array('files'),
   createAssignment
 );
 
@@ -199,9 +196,7 @@ router.put(
   protect,
   authorize('teacher'),
   setUploadPath('assignments'),
-  upload.array('attachments', 5),
-  assignmentValidationRules.update,
-  validateRequest,
+  upload.array('files'),
   updateAssignment
 );
 
@@ -272,9 +267,7 @@ router.post(
   protect,
   authorize('student'),
   setUploadPath('submissions'),
-  upload.single('file'),
-  submissionValidationRules.create,
-  validateRequest,
+  upload.array('files'),
   submitAssignment
 );
 
@@ -339,13 +332,13 @@ router.get('/:id/submissions', protect, authorize('teacher'), getAssignmentSubmi
  *       403:
  *         description: Not authorized to grade this submission
  */
-router.put(
+router.post(
   '/submissions/:id/grade',
   protect,
   authorize('teacher'),
-  submissionValidationRules.grade,
-  validateRequest,
   gradeSubmission
 );
+
+router.delete('/:id/files/:fileId', protect, authorize('teacher'), deleteAssignmentFile);
 
 export default router; 
