@@ -278,7 +278,7 @@ const StudentAssignmentList = ({ courseId }) => {
                         {assignment.title}
                       </Link>
                     </h3>
-                    
+                
                     <p className="text-sm text-gray-500 mb-3">
                       <span className="font-medium">{assignment.course?.name || 'Unknown Course'}</span>
                       <span className="mx-2">•</span>
@@ -297,7 +297,7 @@ const StudentAssignmentList = ({ courseId }) => {
                         <span className={`text-sm font-medium ${timeInfo.urgent ? 'text-red-600' : 'text-gray-700'}`}>
                           {timeInfo.text}
                       </span>
-                      </div>
+                    </div>
                       <div className="text-xs text-gray-500 mt-1">Points: {assignment.totalPoints}</div>
                 </div>
                 

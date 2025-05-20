@@ -97,6 +97,11 @@ const TeacherAssignmentList = ({ courseId }) => {
     }
   };
 
+  const getCourseName = (course) => {
+    if (!course) return 'Unknown Course';
+    return course.name || course.title || course.courseName || 'Unknown Course';
+  };
+
   if (loading) return <Spinner />;
   if (error) return (
     <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -199,7 +204,7 @@ const TeacherAssignmentList = ({ courseId }) => {
                       </span>
                     </div>
                     <p className="text-sm text-gray-500">
-                      {assignment.course?.name || 'Unknown Course'}
+                      {getCourseName(assignment.course)}
                     </p>
                   </div>
                   
