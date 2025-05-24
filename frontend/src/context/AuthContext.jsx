@@ -18,7 +18,6 @@ export const AuthProvider = ({ children }) => {
   const navigate = useNavigate()
 
   // Clear emailVerified from localStorage on initialization if there's no token
-  // This ensures that email verification status doesn't persist between users
   useEffect(() => {
     if (!token) {
       localStorage.removeItem('emailVerified')
@@ -41,9 +40,7 @@ export const AuthProvider = ({ children }) => {
     if (!token) return null
     
     try {
-      console.log('Fetching user profile with token:', token)
       const userData = await authService.getCurrentUser()
-      console.log('Fetched user data:', userData)
       
       // If this user's email is verified, update the OTP verification state
       if (userData.isEmailVerified) {
@@ -55,7 +52,6 @@ export const AuthProvider = ({ children }) => {
       
       return userData
     } catch (error) {
-      console.error('Failed to fetch user profile:', error)
       return null
     }
   }, [token])
@@ -67,7 +63,6 @@ export const AuthProvider = ({ children }) => {
         if (token) {
           const userData = await fetchUserProfile()
           if (userData) {
-            console.log('Setting user data with isEmailVerified:', userData.isEmailVerified);
             setUser(userData)
             
             // If user's email is verified, update the OTP verification state
@@ -83,7 +78,6 @@ export const AuthProvider = ({ children }) => {
           }
         }
       } catch (error) {
-        console.error('Failed to get user profile:', error)
         logout()
       } finally {
         setLoading(false)
@@ -101,8 +95,6 @@ export const AuthProvider = ({ children }) => {
       // Call login service that now correctly extracts token and user
       const result = await authService.login(credentials)
       
-      console.log('Login result from auth service:', result)
-      
       // Make sure we have a token before proceeding
       if (!result || !result.token) {
         throw new Error('No authentication token received from server')
@@ -110,47 +102,33 @@ export const AuthProvider = ({ children }) => {
       
       // Store token in localStorage and state
       localStorage.setItem('token', result.token)
-      console.log('Token stored in localStorage:', result.token.substring(0, 15) + '...')
-      
-      // Set token in state
       setToken(result.token)
       
       // Set user data if available, otherwise fetch it
       if (result.user) {
-        console.log('Setting user from login response:', result.user)
-        console.log('Email verification status from login:', result.user.isEmailVerified)
-        
         // Ensure isEmailVerified is explicitly set as a boolean
         result.user.isEmailVerified = result.user.isEmailVerified === true
-        
         setUser(result.user)
-        
         toast.success('Successfully logged in!')
         
         // Navigate to dashboard
         setTimeout(() => {
           navigate('/dashboard', { replace: true })
-        }, 100) // Short delay to ensure state updates
+        }, 100)
       } else {
         // If no user data in response, fetch it before redirecting
-        console.log('User data not in login response, fetching separately...')
-        
-        // We need to wait a moment for the token to be set in axios config
         setTimeout(async () => {
           try {
             const userData = await fetchUserProfile()
             
             if (userData) {
-              console.log('User data fetched successfully:', userData)
               setUser(userData)
-              
               toast.success('Successfully logged in!')
               navigate('/dashboard', { replace: true })
             } else {
               throw new Error('Failed to fetch user data')
             }
           } catch (error) {
-            console.error('Error fetching user after login:', error)
             toast.error('Logged in but failed to load user data')
             navigate('/dashboard', { replace: true })
           } finally {
@@ -161,8 +139,6 @@ export const AuthProvider = ({ children }) => {
       
       return result
     } catch (error) {
-      console.error('Login error:', error)
-      
       // Extract meaningful error message from the error object
       let errorMessage = 'Login failed'
       
@@ -185,15 +161,9 @@ export const AuthProvider = ({ children }) => {
       setLoading(true)
       const data = await authService.register(userData)
       
-      // We don't set emailVerified here because we want the user to verify their email
-      // Only the server should determine if the email is verified
-      
       toast.success('Registration successful!')
-      // Don't navigate away - let the component handle this
       return data
     } catch (error) {
-      console.error('Registration error:', error)
-      
       // Extract meaningful error message from the error object
       let errorMessage = 'Registration failed'
       
@@ -279,17 +249,13 @@ export const AuthProvider = ({ children }) => {
   // Send verification OTP (for authenticated users)
   const sendVerificationOTP = async () => {
     try {
-      // First set isVerifying to true
       setOtpVerificationState(prev => ({ 
         ...prev, 
         isVerifying: true,
-        // Don't change other states yet
       }));
       
-      // Call the API
       const result = await authService.sendVerificationOTP();
       
-      // Only after successful API call, update otpSent state
       if (result.success) {
         setOtpVerificationState(prev => ({ 
           ...prev, 
@@ -301,7 +267,6 @@ export const AuthProvider = ({ children }) => {
       
       return result;
     } catch (error) {
-      // In case of error, reset the isVerifying state
       setOtpVerificationState(prev => ({ 
         ...prev, 
         isVerifying: false 
@@ -314,17 +279,14 @@ export const AuthProvider = ({ children }) => {
   // Send verification OTP (public - during registration)
   const sendVerificationOTPPublic = async (email) => {
     try {
-      // First set isVerifying to true and save the email
       setOtpVerificationState(prev => ({ 
         ...prev, 
         isVerifying: true,
-        verificationEmail: email // Store the email for later use
+        verificationEmail: email
       }));
       
-      // Call the API
       const result = await authService.sendVerificationOTPPublic(email);
       
-      // Only after successful API call, update otpSent state
       if (result.success) {
         setOtpVerificationState(prev => ({ 
           ...prev, 
@@ -336,7 +298,6 @@ export const AuthProvider = ({ children }) => {
       
       return result;
     } catch (error) {
-      // In case of error, reset the isVerifying state
       setOtpVerificationState(prev => ({ 
         ...prev, 
         isVerifying: false 
@@ -349,25 +310,20 @@ export const AuthProvider = ({ children }) => {
   // Verify email with OTP (for authenticated users)
   const verifyEmail = async (otp) => {
     try {
-      // First set isVerifying to true
       setOtpVerificationState(prev => ({ 
         ...prev, 
         isVerifying: true,
-        // Don't change other states yet
       }));
       
-      // Call the API
       const result = await authService.verifyEmail(otp);
       
       if (result.success) {
-        // Update states after successful verification
         setOtpVerificationState({
           isVerifying: false,
           otpSent: false,
           emailVerified: false
         });
         
-        // Update user state to reflect verified email
         setUser(prev => ({
           ...prev,
           isEmailVerified: true
@@ -378,7 +334,6 @@ export const AuthProvider = ({ children }) => {
       
       return result;
     } catch (error) {
-      // In case of error, only reset the isVerifying state
       setOtpVerificationState(prev => ({ 
         ...prev, 
         isVerifying: false 
@@ -391,7 +346,6 @@ export const AuthProvider = ({ children }) => {
   // Verify email with OTP (public - during registration)
   const verifyEmailPublic = async (email, otp) => {
     try {
-      // Get the email from state if not provided
       const emailToVerify = email || otpVerificationState.verificationEmail;
       
       if (!emailToVerify) {
@@ -399,17 +353,14 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Email address is missing');
       }
       
-      // First set isVerifying to true
       setOtpVerificationState(prev => ({ 
         ...prev, 
         isVerifying: true
       }));
       
-      // Call the API
       const result = await authService.verifyEmailPublic(emailToVerify, otp);
       
       if (result.success) {
-        // Update states after successful verification, but don't trust local verification for registration
         setOtpVerificationState({
           isVerifying: false,
           otpSent: false,
@@ -422,7 +373,6 @@ export const AuthProvider = ({ children }) => {
       
       return result;
     } catch (error) {
-      // In case of error, only reset the isVerifying state
       setOtpVerificationState(prev => ({ 
         ...prev, 
         isVerifying: false 
@@ -434,8 +384,6 @@ export const AuthProvider = ({ children }) => {
 
   // Reset OTP verification state
   const resetOtpVerification = () => {
-    // Don't rely on localStorage for email verification status
-    // Only rely on the user's actual verified status
     setOtpVerificationState({
       isVerifying: false,
       otpSent: false,

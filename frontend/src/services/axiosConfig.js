@@ -12,13 +12,6 @@ const axiosInstance = axios.create({
   }
 })
 
-// Debug helper for token
-const getAuthToken = () => {
-  const token = localStorage.getItem('token')
-  console.log('Current token from localStorage:', token)
-  return token
-}
-
 // List of public endpoints that don't require authentication
 const publicEndpoints = [
   '/users/register',
@@ -42,7 +35,6 @@ axiosInstance.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('Request error interceptor:', error);
     return Promise.reject(error);
   }
 );
