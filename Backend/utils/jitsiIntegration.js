@@ -138,13 +138,6 @@ export const generateJitsiData = (user, session) => {
     return response;
   } catch (error) {
     console.error('Error generating Jitsi data:', error);
-    
-    // Fallback to ensure we always return a videoLink
-    const fallbackRoom = 'fallback_' + Math.random().toString(36).substring(2, 9);
-    return {
-      roomName: fallbackRoom,
-      videoLink: `https://${JITSI_CONFIG.domain}/${fallbackRoom}`,
-      meetingId: fallbackRoom
-    };
+    throw error;
   }
 }; 

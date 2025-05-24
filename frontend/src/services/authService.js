@@ -3,41 +3,22 @@ import axiosInstance from './axiosConfig'
 // Login user
 const login = async (credentials) => {
   try {
-    console.log('Login request with:', { email: credentials.email, password: '********' })
-    const response = await axiosInstance.post('/users/login', credentials)
-    console.log('Login response:', response.data)
+    const response = await axiosInstance.post('/users/login', credentials);
+    const { token, user } = response.data;
     
-    // Extract data from the nested structure
-    // The server returns { success: true, data: { user, token } }
-    if (response.data.success && response.data.data) {
-      const { token, user } = response.data.data;
-      
-      console.log('Extracted token:', token ? `${token.substring(0, 15)}...` : 'null')
-      console.log('Extracted user data:', user)
-      
-      // Return the extracted data
+    if (token && user) {
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
       return { token, user };
     } else {
       console.error('Unexpected response structure:', response.data);
-      throw new Error(response.data.message || 'Authentication failed: Invalid response structure');
+      throw new Error('Invalid login response');
     }
   } catch (error) {
-    console.error('Login error:', error.response?.data || error.message)
-    
-    // Extract the error message from the response
-    if (error.response?.data) {
-      const errorMessage = error.response.data.message || 'Login failed';
-      throw new Error(errorMessage);
-    }
-    
-    // Ensure we're properly handling authentication errors
-    if (error.response?.status === 401) {
-      throw new Error('Invalid email or password. Please try again.');
-    }
-    
-    throw new Error(error.message || 'Login failed. Please try again later.');
+    console.error('Login error:', error.response?.data || error.message);
+    throw error;
   }
-}
+};
 
 // Register user
 const register = async (userData) => {
@@ -51,14 +32,7 @@ const register = async (userData) => {
     return response.data
   } catch (error) {
     console.error('Register error:', error)
-    
-    // Extract the error message from the response
-    if (error.response?.data) {
-      const errorMessage = error.response.data.message || 'Registration failed';
-      throw new Error(errorMessage);
-    }
-    
-    throw new Error(error.message || 'Registration failed. Please try again later.');
+    throw error;
   }
 }
 
@@ -84,7 +58,7 @@ const getCurrentUser = async () => {
     return userData;
   } catch (error) {
     console.error('Get current user error:', error)
-    throw error
+    throw error;
   }
 }
 
@@ -100,7 +74,7 @@ const updateProfile = async (userData) => {
     return response.data
   } catch (error) {
     console.error('Update profile error:', error)
-    throw error
+    throw error;
   }
 }
 
@@ -111,7 +85,7 @@ const changePassword = async (passwordData) => {
     return response.data
   } catch (error) {
     console.error('Change password error:', error)
-    throw error
+    throw error;
   }
 }
 
@@ -120,10 +94,11 @@ const logout = () => {
   try {
     // Remove token from localStorage
     localStorage.removeItem('token')
+    localStorage.removeItem('user')
     return true
   } catch (error) {
     console.error('Logout error:', error)
-    return false
+    throw error;
   }
 }
 

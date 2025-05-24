@@ -106,9 +106,17 @@ export const sendOtpEmail = async (to, otp) => {
     
     while (attempts < maxAttempts) {
       try {
-        const info = await transporter.sendMail(mailOptions);
-        console.log('Email sent:', info.messageId);
-        return info;
+        if (process.env.NODE_ENV === 'production') {
+          const info = await transporter.sendMail(mailOptions);
+          console.log('Email sent:', info.messageId);
+          return info;
+        } else {
+          // Development mode - skip actual email sending
+          return { 
+            messageId: `mock-error-handled-${Date.now()}`,
+            success: true // Indicate mock success
+          };
+        }
       } catch (error) {
         lastError = error;
         attempts++;

@@ -7,7 +7,7 @@ const getCourses = async () => {
     return response.data.data || []
   } catch (error) {
     console.error('Error fetching courses:', error)
-    return []
+    throw error
   }
 }
 
@@ -36,13 +36,10 @@ const getEnrolledCourses = async () => {
 // Get courses created by the logged-in teacher
 const getTeacherCourses = async () => {
   try {
-    console.log('Calling getTeacherCourses API...')
     const response = await axiosInstance.get('/courses/teaching')
-    console.log('Teaching courses API response:', response.data)
     return response.data.data || []
   } catch (error) {
     console.error('Error fetching teacher courses:', error)
-    console.error('Error details:', error.response?.data || 'No response data')
     throw error
   }
 }
