@@ -1,5 +1,34 @@
 # Virtual Classroom System  
 
+**A comprehensive platform designed to facilitate online learning and classroom management.** This system aims to provide a seamless experience for teachers and students with features ranging from user authentication and class management to live video conferencing and assignment tracking.
+
+<br>
+
+## Table of Contents
+- [Modules](#modules)
+- [Path Structure of Project](#path-structure-of-project)
+- [Technologies to be Used](#technologies-to-be-used)
+- [Functional Requirements](#functional-requirements)
+  - [User Authentication & Authorization](#1%EF%B8%8F%E2%83%A3-user-authentication--authorization)
+  - [Class Management (For Teachers)](#2%EF%B8%8F%E2%83%A3-class-management-for-teachers)
+  - [Student Dashboard](#3%EF%B8%8F%E2%83%A3-student-dashboard)
+  - [Live Video Conferencing](#4%EF%B8%8F%E2%83%A3-live-video-conferencing)
+  - [Assignment Management](#5%EF%B8%8F%E2%83%A3-assignment-management)
+  - [Attendance Tracking](#6%EF%B8%8F%E2%83%A3-attendance-tracking)
+  - [Notifications & Announcements](#7%EF%B8%8F%E2%83%A3-notifications--announcements)
+  - [User Profile Management](#8%EF%B8%8F%E2%83%A3-user-profile-management)
+  - [Chat & Discussion Forum](#9%EF%B8%8F%E2%83%A3-chat--discussion-forum)
+  - [Reports & Analytics](#%EF%B8%8F-reports--analytics)
+- [Non-Functional Requirements](#-non-functional-requirements)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Running the Project](#running-the-project)
+- [Contributing](#contributing)
+- [License](#license)
+- [Customer Journey Map](#customer-journey-map)
+- [Empathy Map](#empathy-map)
+
 <br>
 
 # Modules  
@@ -39,7 +68,7 @@
 │   │   │   ├── authSlice.js<br>
 │   │   │   ├── classSlice.js<br>
 │   │   │   ├── assignmentSlice.js<br>
-│   │   ├── store.js<br>
+│   ├── store.js<br>
 │   ├── App.js<br>
 │   ├── index.js<br>
 │── package.json<br>
@@ -150,13 +179,101 @@ Export reports in CSV/PDF format.  <br>
 ✅ Integration – Support external APIs like Google Drive (for file storage) & Zoom (for live classes).  <br>  
 
 <br>  
+
+# Getting Started
+
+This section will guide you through setting up and running the Virtual Classroom System locally.
+
+## Prerequisites
+
+Ensure you have the following installed on your system:
+*   Node.js (Specify version, e.g., v18.x or later)
+*   npm or yarn
+*   Python (Specify version, e.g., v3.9.x or later) and pip (if using Django backend)
+*   Git
+
+## Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://your-repository-url.git
+    cd virtual-classroom
+    ```
+2.  **Frontend Setup:**
+    ```bash
+    cd src # Or your frontend directory
+    npm install
+    # or
+    yarn install
+    ```
+3.  **Backend Setup (Example for Django):**
+    ```bash
+    cd ../backend # Or your backend directory
+    python -m venv venv
+    source venv/bin/activate  # On Windows: venv\Scripts\activate
+    pip install -r requirements.txt
+    # Perform database migrations, etc.
+    # python manage.py migrate
+    ```
+4.  **Environment Variables:**
+    Create a `.env` file in the root directory (and/or frontend/backend directories as needed) and populate it with the necessary environment variables. Refer to `.env.example` if available.
+    Example:
+    ```
+    REACT_APP_API_URL=http://localhost:8000/api
+    SECRET_KEY=your_django_secret_key
+    DATABASE_URL=your_database_connection_string
+    ```
+
+## Running the Project
+
+1.  **Start the Backend Server (Example for Django):**
+    ```bash
+    cd backend # Or your backend directory
+    source venv/bin/activate # If not already activated
+    python manage.py runserver
+    ```
+    The backend will typically run on `http://localhost:8000`.
+
+2.  **Start the Frontend Development Server:**
+    ```bash
+    cd src # Or your frontend directory
+    npm start
+    # or
+    yarn start
+    ```
+    The frontend will typically run on `http://localhost:3000`.
+
+Open your browser and navigate to `http://localhost:3000`.
+
+<br>
+
+# Contributing
+
+We welcome contributions to the Virtual Classroom System! Please follow these general guidelines:
+
+1.  Fork the repository.
+2.  Create a new branch for your feature or bug fix: `git checkout -b feature-name` or `bugfix-name`.
+3.  Make your changes and commit them with clear, descriptive messages.
+4.  Push your changes to your fork: `git push origin feature-name`.
+5.  Create a pull request to the `main` (or `develop`) branch of the original repository.
+6.  Ensure your code follows the project's coding standards and includes tests where applicable.
+
+<br>
+
+# License
+
+This project is licensed under the [NAME OF LICENSE] - see the `LICENSE.md` file for details (if you create one).
+
+*You should replace `[NAME OF LICENSE]` with the actual license you choose (e.g., MIT, Apache 2.0) and optionally create a `LICENSE.md` file.*
+
+<br>
 # Customer Journey Map
 <br>
-![WhatsApp Image 2025-02-25 at 12 25 10_a6ffab7b](https://github.com/user-attachments/assets/4356a98e-37de-42a3-878a-20a11e97998d)
+![Customer Journey Map for Virtual Classroom](https://github.com/user-attachments/assets/4356a98e-37de-42a3-878a-20a11e97998d)
 <br>
 <br>
 # Empathy Map
 <br>
-![WhatsApp Image 2025-02-25 at 11 42 46_97cf3c58](https://github.com/user-attachments/assets/7ce4597f-5273-43c5-b887-a3fe67d58481)
+![Empathy Map for Virtual Classroom Users](https://github.com/user-attachments/assets/7ce4597f-5273-43c5-b887-a3fe67d58481)
 <br>
 
